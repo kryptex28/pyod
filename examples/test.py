@@ -8,13 +8,15 @@ import numpy as np
 import timeit
 
 # Laden Sie die .arff-Datei
-data = arff.loadarff(r'C:\Users\david\Desktop\datasets\literature\ALOI\ALOI_withoutdupl.arff')
-
+data = arff.loadarff(r'C:\Users\david\Desktop\datasets\literature\ALOI\ALOI_withoutdupl_norm.arff')
+data2 = arff.loadarff(r'C:\Users\david\Desktop\datasets\literature\Shuttle\Shuttle_withoutdupl_v10.arff')
 # Konvertieren Sie die Daten in ein Pandas DataFrame
 df = pd.DataFrame(data[0])
-
+df2= pd.DataFrame(data2[0])
 features = 27
+features2 =9
 selected_columns = df.iloc[:, :features]
+selected_columns2 = df2.iloc[:, :features2]
 dataset = pd.read_csv(r"C:\Users\david\Desktop\datasets\creditcard.csv")
 orig = dataset.copy()
 del dataset['Time']
@@ -23,20 +25,20 @@ del dataset['Class']
 print(features)
 first_20_rows_27_cols = df.iloc[:50, :2]
 data = selected_columns.to_numpy()
+data2 = selected_columns2.to_numpy()
 data = np.array(dataset)
 
-print(features)
 # data=first_20_rows_27_cols.to_numpy()
-data = np.array([[1,2],[2,4],[3,5],[2,5],[1,2],[4,6],[200,160],[1000,1001]])
+#data = np.array([[1,2],[2,4],[3,5],[2,5],[1,2],[4,6],[200,160],[1000,1001]])
 # data= np.array([1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 4, 5, 7, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 10])
 data0 = [1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 4, 5, 7, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 10]
 data1 = [1, 2, 2, 5, 5, 5, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10]
 #data = DataFrame(data={'attr1': data0, 'attr2': data1})
 #data = np.array(data)
-samples = len(data)
+samples = len(dataset)
 n_bins = 10
 features=data.shape[1]
-
+print(features)
 np.set_printoptions(threshold=np.inf)
 histogram_list = []
 histogram_list_scores = []
@@ -44,7 +46,8 @@ bin_edges_list = []
 hbos_scores = []
 bin_inDlist = []
 hist_ = []
-max_values = []
+max_values_per_bins = []
+max_values_per_feature= np.max(data, axis=0)
 bin_with_list = []
 highest_bin = []
 highest_score = []
@@ -106,7 +109,8 @@ def digit():
             bin_inDlist.append(binIds)
 
 
-def get_highest_value():  # needed to normalize bin with?
+def get_highest_value_per_bin():  # needed to normalize bin with?
+
     for i in range(features):
         iDs = bin_inDlist[i]
         max_values_per_iD = {}
@@ -122,7 +126,7 @@ def get_highest_value():  # needed to normalize bin with?
                 if zahlen > max_values_per_iD[id_]:
                     max_values_per_iD[id_] = zahlen
 
-        max_values.append(max_values_per_iD)
+        max_values_per_bins.append(max_values_per_iD)
 
 
 def get_highest_bin():
@@ -136,10 +140,10 @@ def get_scores():
     for i in range(features):  # get also the highest score
         hist_ = histogram_list[i]
         scores_ = []
-        max_score = (hist_[0]) / (bin_with_list[i] / abs(highest_bin[i]))
+        max_score = (hist_[0]) / (bin_with_list[i] / (highest_bin[i]))
         scores_.append(max_score)
         for j in range(n_bins_list[i] - 1):
-            score = (hist_[j + 1]) / (bin_with_list[i] / abs(highest_bin[i]))           # Bin Höhe / (Bin Breite / höchste win im Histogramm)
+            score = (hist_[j + 1]) / (bin_with_list[i] / (highest_bin[i]))           # Bin Höhe / (Bin Breite / höchste win im Histogramm)
             scores_.append(score)
             if score > max_score:
                 max_score = score
@@ -151,8 +155,8 @@ def calcscore():
     get_scores()
     for i in range(len(data)):
         score = 0
-        for b in range(features):
-            iDList = bin_inDlist[b]                                          #Score =  Bin Höhe / (Bin Breite / höchste win im Histogram)
+        for b in range(features):                                             # Besser np.sum(allscores[:,i] Siehe pyod 
+            iDList = bin_inDlist[b]                                          #Score =  Bin Höhe / (Bin Breite / höchste bin im Histogram)
             iD = iDList[i]
             allscores = score_list[b]                                        #TmpScore = Log (Score / höchsten Score im Histogram) / 1
             maxscore = highest_score[b]
@@ -171,7 +175,7 @@ def calcscore2():
             iD = iDList[i]
             featurehist = histogram_list[b]                                 #Score = the result is the value of the probability density function at the bin,
             tmpscore = featurehist[iD - 1]                                  #normalized such that the integral over the range is 1
-            tmpscore = 1.0 / tmpscore
+            tmpscore = 1.0 / tmpscore                                       #   sum(1/log(score)
             score = score + math.log(tmpscore)
         hbos_scores.append(score)
 
@@ -208,8 +212,9 @@ print(score_list, "score_list")
 # print(hbos_scores[i], "score", [i], "\n")
 
 
-print(n_bins_list)
-print(hbos_scores)
+#print(n_bins_list)
+#print(hbos_scores)
+print(len(data))
 hbos_orig = orig.copy()
 hbos_orig['hbos'] = hbos_scores
 
@@ -224,3 +229,7 @@ print(execution_timefit, "execution time fit", "\n")
 print(execution_timedigit, "execution time digit", "\n")
 print(execution_timecalcscore, "execution time calcscore", "\n")
 print(n_bins_list, "n_bins_list")
+
+get_highest_value_per_bin()
+#print( max_values_per_feature, "np.max")
+#print(np.array(max_values_per_bins), "mv f")
