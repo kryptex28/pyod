@@ -1,5 +1,6 @@
 from numpy import genfromtxt
 from scipy.io import arff
+from sklearn.preprocessing import LabelEncoder
 
 from pyod.models.hbos2 import HBOS2
 
@@ -9,6 +10,7 @@ import numpy as np
 
 if __name__ == "__main__":
     clf_name = 'HBOS2'
+    np.set_printoptions(threshold=np.inf)
     clf = HBOS2()
     dataset = pd.read_csv(r"C:\Users\david\Desktop\datasets\creditcard.csv")
     #data = arff.loadarff(r'C:\Users\david\Desktop\datasets\literature\ALOI\ALOI_withoutdupl_norm.arff')
@@ -31,11 +33,14 @@ if __name__ == "__main__":
 
 
 
-    hbos_scores=clf.hbos_scores
+    '''hbos_scores=clf.hbos_scores
     hbos_orig = orig.copy()
     hbos_orig['hbos'] = hbos_scores
     hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:1000]
     #hbos_top1000_data.to_csv('out2.csv')
     hbos_top1000_data[:50]
     print(hbos_top1000_data)
-    print(len(hbos_top1000_data[lambda x: x['Class'] == 1]))
+    print(len(hbos_top1000_data[lambda x: x['Class'] == 1]))'''
+
+
+
