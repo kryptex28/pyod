@@ -1,4 +1,5 @@
 import math
+import time
 
 import numpy as np
 
@@ -24,6 +25,10 @@ class HBOS2():
         self.hbos_scores = []
     # X : numpy array of shape (n_samples, n_features)
     def fit(self, X, y=None):
+        print("start")
+        start_time = time.time()
+
+
         self.max_values_per_feature = np.max(X, axis=0)
         self.samples=len(X)
         self.n_bins= round(math.sqrt(self.samples))
@@ -45,8 +50,10 @@ class HBOS2():
             self.histogram_list.append(hist)
             self.bin_with_list.append(bin_with)
             self.bin_edges_list.append(bin_edges)
-
+        end_timefit = time.time()
         # Digitize()
+
+        start_timedigit = time.time()
         for i in range(self.features):
             if self.features > 1:
                 binIds = np.digitize(X[:, i], self.bin_edges_list[i], right=False)
@@ -61,10 +68,25 @@ class HBOS2():
                     if (binIds[j] > self.n_bins_list[i]):
                         binIds[j] = binIds[j] - 1
                 self.bin_inDlist.append(binIds)
+        end_timedigit = time.time()
         #get raw scores
+        start_time_getscores=time.time()
         self.get_scores()
+        end_timegetscores = time.time()
         #calc hbos scores for every i in range(len(data))
+        start_time_calc = time.time()
         self.calc_score(X)
+        end_time = time.time()
+        execution_timefit = end_timefit - start_time
+        execution_digit = end_timedigit - start_timedigit
+        execution_get_scores= end_timegetscores - start_time_getscores
+        execution_calc_scores = end_time - start_time_calc
+        print(execution_timefit, "execution time fit", "\n")
+        print(execution_digit, "execution time digit", "\n")
+        print(execution_get_scores, "execution time get_scores", "\n")
+        print(execution_calc_scores,"execution time calc_scores","\n")
+        print(end_time - start_time,"total","\n")
+
     def get_scores(self):
         for i in range(self.features):  # get highest bin
             max = np.amax(self.histogram_list[i])
