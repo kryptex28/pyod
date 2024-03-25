@@ -30,14 +30,16 @@ data = np.array(dataset)
 
 # data=first_20_rows_27_cols.to_numpy()
 #data = np.array([[1,2],[2,4],[3,5],[2,5],[1,2],[4,6],[200,160],[1000,1001]])
-# data= np.array([1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 4, 5, 7, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 10])
+#data= np.array([1, 2, 3,4,5,6,70,100])
 data0 = [1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 4, 5, 7, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 10]
 data1 = [1, 2, 2, 5, 5, 5, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 10, 10, 10, 10, 10, 10, 10, 10]
 #data = DataFrame(data={'attr1': data0, 'attr2': data1})
-#data = np.array(data)
+data = np.array(data)
 samples = len(dataset)
 n_bins = 10
+n_bins= round(math.sqrt(samples))
 features=data.shape[1]
+
 print(features)
 np.set_printoptions(threshold=np.inf)
 histogram_list = []
@@ -52,6 +54,7 @@ bin_with_list = []
 highest_bin = []
 highest_score = []
 score_list = []
+score_list2=[]
 n_bins_list = []
 
 
@@ -142,7 +145,7 @@ def get_scores():
         scores_ = []
         max_score = (hist_[0]) / (bin_with_list[i] / (highest_bin[i]))
         scores_.append(max_score)
-        for j in range(n_bins_list[i] - 1):
+        for j in range(n_bins_list[i] - 1):                                          #Old
             score = (hist_[j + 1]) / (bin_with_list[i] / (highest_bin[i]))           # Bin Höhe / (Bin Breite / höchste win im Histogramm)
             scores_.append(score)
             if score > max_score:
@@ -150,9 +153,31 @@ def get_scores():
         highest_score.append(max_score)
         score_list.append(scores_)
 
+def get_scores2():
+    get_highest_bin()
+    for i in range(features):  # get also the highest score
+        if features==1:
+            max_=max_values_per_feature
+        else:
+            max_= max_values_per_feature[i]
+        if max_ ==0:
+            max_=1.0
+        hist_ = histogram_list[i]
+        scores_ = []
+        max_score = (hist_[0]) / (bin_with_list[i] * 1 / (abs(max_)))
+        scores_.append(max_score)
+        for j in range(n_bins_list[i] - 1):                                         #Wie in Java
+            score = (hist_[j + 1]) / (bin_with_list[i] * 1 / (abs(max_)))           # Bin Höhe / (Bin Breite / höchste win im Histogramm)
+            scores_.append(score)
+            if score > max_score:
+                max_score = score
+        highest_score.append(max_score)
+        score_list2.append(scores_)
+
 
 def calcscore():
     get_scores()
+    get_scores2()
     for i in range(len(data)):
         score = 0
         for b in range(features):                                             # Besser np.sum(allscores[:,i] Siehe pyod 
@@ -179,6 +204,30 @@ def calcscore2():
             score = score + math.log(tmpscore)
         hbos_scores.append(score)
 
+def normalize_scores(l):
+    list= np.copy(l)
+    for b in range(features):
+        highest_b = highest_score[b]
+        list[:b] /= highest_b
+    inv_list= np.divide(1, list)
+    inv_list= np.log10(inv_list)
+    return inv_list
+
+def calcscore3():
+    get_scores()
+    for i in range(len(data)):
+        score = 0
+        for b in range(features):
+            maxscore = highest_score[b]
+            scores_b = score_list[b]
+            iDList = bin_inDlist[b]
+            iD = iDList[i]
+            tmpscore= scores_b[iD-1]
+            tmpscore = tmpscore * 1 / maxscore
+            tmpscore = 1 /tmpscore
+            score = score + math.log10(tmpscore)
+        hbos_scores.append(score)
+
 
 # fit()
 # digit()
@@ -193,7 +242,7 @@ digit()
 end_time = time.time()
 execution_timedigit = end_time - start_time
 start_time = time.time()
-calcscore()
+calcscore3()
 end_time = time.time()
 
 execution_timecalcscore = end_time - start_time
@@ -205,8 +254,11 @@ print(histogram_list, "histogram")
 print(bin_edges_list, "edges")
 print(highest_bin, "highest_bin")
 print(highest_score, "highest_score")
-#print(bin_inDlist, "iDList")
-print(score_list, "score_list")
+print(bin_inDlist, "iDList")
+print(score_list2, "score_list2")
+print(score_list, "score_list1")
+print(hbos_scores,"hbos")
+print(max_values_per_feature,"max_values_per_feature")
 '''
 # for i in range(2000):
 # print(hbos_scores[i], "score", [i], "\n")
@@ -222,6 +274,7 @@ hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:1000]
 
 # hbos_top1000_data.to_csv('outauto.csv')
 hbos_top1000_data[:50]
+
 print(hbos_top1000_data)
 
 print(len(hbos_top1000_data[lambda x: x['Class'] == 1]), "von ", len(hbos_orig[lambda x: x['Class'] == 1]))
