@@ -33,13 +33,15 @@ class HBOS2:
         print("start")
         start_time = time.time()
         if len(X.shape) > 1:
-            self.features = features = X.shape[1]
+            self.features = X.shape[1]
         else:
             self.features = 1
+        print(self.features, "features")
         self.max_values_per_feature = np.max(X, axis=0)
         self.samples = len(X)
+        print(self.samples, "samples")
         self.n_bins = round(math.sqrt(self.samples))
-        #self.n_bins=200
+        # self.n_bins=1000
         self.is_nominal = np.zeros(self.features, dtype=bool)
 
         # Check if any features is nominal if yes encode all nominal features using scikit-learn LabelEncoder
@@ -71,8 +73,8 @@ class HBOS2:
             print(execution_get_scores, "execution time get_scores", "\n")
             print(execution_calc_scores, "execution time calc_scores", "\n")
             print(end_time - start_time, "total", "\n")
-            print(self.highest_bin,"highest bin", "\n")
-
+            print(self.highest_bin, "highest bin", "\n")
+            print(self.histogram_list,"histogram", "\n")
         elif self.mode == "dynamic":
             print("dynamic mode")
             self.create_dynamic_histogram(X)
@@ -96,8 +98,7 @@ class HBOS2:
             print(execution_calc_scores, "execution time calc_scores", "\n")
             print(end_time - start_time, "total", "\n")
             print(self.highest_bin, "highest bin", "\n")
-            print(self.histogram_list, "hist")
-            print(self.bin_with_list,"bin with_list")
+            print(self.histogram_list, "histogram list", "\n")
 
         # Digitize() get for every Value in which bin it belongs in every Dimension
 
@@ -200,12 +201,18 @@ class HBOS2:
             self.bin_edges_list.append(bin_edges)
             for i in range(len(binfirst)):
                 bin_with = binlast[i] - binfirst[i]
+
+                # bin_with=binfirst[i+1] -binfirst[i]        falls bin with = bin start bis neue bin start
                 if bin_with == 0:
                     bin_with = 1
                 bin_withs.append(bin_with)
+            # binwith = binlast[-1] - binfirst[-1]            falls bin with = bin start bis neue bin start
+            # if binwith == 0:
+            #    binwith = 1
+            # bin_withs.append(binwith)
             self.bin_with_list.append(bin_withs)
         print(self.n_bins_list, "number of bins")
-        print(self.n_bins ,"real number of bins")
+        print(self.n_bins, "real number of bins")
 
     def set_is_nominal(self, is_nominal):
         self.is_nominal = is_nominal

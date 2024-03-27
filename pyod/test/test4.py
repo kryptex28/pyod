@@ -45,7 +45,6 @@ if __name__ == "__main__":
     hbos_orig['hbos'] = hbos_scores
     hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:1000]
     hbos_top1000_data[:50]
-    print(hbos_top1000_data)
     print(len(hbos_top1000_data[lambda x: x['Class'] == 1]))
 
     clf2.set_mode("dynamic")

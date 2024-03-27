@@ -21,7 +21,7 @@ del dataset['Class']
 dataset= np.array(dataset)
 features=dataset.shape[1]
 
-dataset= np.array([1,2,3,3,4,5,6,6,6,6,7,8,9,9,10]) #15
+dataset= np.array([1,2,3,4,5,6,7,8,9,10,11]) #15
 
 n_bins=5
 samples=len(dataset)
@@ -48,6 +48,7 @@ for i in range(features):
     bin_withs = []
     #idataset = dataset[:, i]
     data, anzahl = np.unique(dataset, return_counts=True)
+
     counter = 0
     for num, anzahl_ in zip(data, anzahl):
         if counter == 0:
@@ -123,7 +124,7 @@ for j in range(features):
     for k in range(n_bins):
         bin_ = []
         histo.append(bin_)
-        print(k)
+
 
     for i in range(samples):
         tmpidlist=ids_list[j]
@@ -132,7 +133,7 @@ for j in range(features):
     histogram_list2.append(histo)
 
 print(histogram_list2,"histogram_list2")
-
+print(bin_with_list,"bin_with_list")
 #hist, edgess = np.histogram(data, bins=bin_edges)
 #ids = np.digitize(data,bins=bin_edges)
 #print(ids)

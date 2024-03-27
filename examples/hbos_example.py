@@ -30,7 +30,7 @@ if __name__ == "__main__":
     X_train, X_test, y_train, y_test = \
         generate_data(n_train=n_train,
                       n_test=n_test,
-                      n_features=2,
+                      n_features=28,
                       contamination=contamination,
                       random_state=42)
 
@@ -39,6 +39,7 @@ if __name__ == "__main__":
     clf = HBOS()
     clf.fit(X_train)
 
+
     # get the prediction labels and outlier scores of the training data
     y_train_pred = clf.labels_  # binary labels (0: inliers, 1: outliers)
     y_train_scores = clf.decision_scores_  # raw outlier scores
@@ -46,7 +47,8 @@ if __name__ == "__main__":
     # get the prediction on the test data
     y_test_pred = clf.predict(X_test)  # outlier labels (0 or 1)
     y_test_scores = clf.decision_function(X_test)  # outlier scores
-
+    print(y_test_pred, y_test_scores,"hello")
+    print("\n")
     # evaluate and print the results
     print("\nOn Training Data:")
     evaluate_print(clf_name, y_train, y_train_scores)
