@@ -36,7 +36,7 @@ if __name__ == "__main__":
     print(len(data), " samples")
     print(data.shape)
 
-
+    #clf.set_adjust(True)                                   #Works good with static and low n_bins (10)
     #print(clf.hbos_scores,"clf scores")
     #print(clf2.hbos_scores, "clf2 scores")
     clf.fit(data)
@@ -45,7 +45,8 @@ if __name__ == "__main__":
     hbos_orig['hbos'] = hbos_scores
     hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:1000]
     hbos_top1000_data[:50]
-    print(len(hbos_top1000_data[lambda x: x['Class'] == 1]))
+    print(hbos_top1000_data)
+    print(len(hbos_top1000_data[lambda x: x['Class'] == 1])," gefunden")
 
     clf2.set_mode("dynamic")
     clf2.fit(data)
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     hbos_top1000_data2 = hbos_orig2.sort_values(by=['hbos'], ascending=False)[:1000]
     hbos_top1000_data2[:50]
     print(hbos_top1000_data2)
-    print(len(hbos_top1000_data2[lambda x: x['Class'] == 1]))
+    print(len(hbos_top1000_data2[lambda x: x['Class'] == 1])," gefunden")
 
 
 

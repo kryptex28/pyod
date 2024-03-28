@@ -9,7 +9,7 @@ import numpy as np
 
 
 class HBOS2:
-    def __init__(self, mode="static"):
+    def __init__(self, mode="static", adjust=False):
         # super(HBOS2, self).__init__(contamination=contamination)
         self.sorted_data = None
         self.mode = mode
@@ -27,6 +27,7 @@ class HBOS2:
         self.score_list = []
         self.hbos_scores = []
         self.is_nominal = None
+        self.adjust = adjust
 
     # X : numpy array of shape (n_samples, n_features)
     def fit(self, X, y=None):
@@ -41,7 +42,7 @@ class HBOS2:
         self.samples = len(X)
         print(self.samples, "samples")
         self.n_bins = round(math.sqrt(self.samples))
-        # self.n_bins=1000
+        #self.n_bins=5
         self.is_nominal = np.zeros(self.features, dtype=bool)
 
         # Check if any features is nominal if yes encode all nominal features using scikit-learn LabelEncoder
@@ -58,7 +59,10 @@ class HBOS2:
             self.digitize(X)
             end_timedigit = time.time()
             start_time_getscores = time.time()
-            self.get_scores()
+            if self.adjust:
+                self.get_scores_adjusted()
+            else:
+                self.get_scores()
             end_timegetscores = time.time()
             start_time_calc = time.time()
             self.calc_score()
@@ -73,8 +77,8 @@ class HBOS2:
             print(execution_get_scores, "execution time get_scores", "\n")
             print(execution_calc_scores, "execution time calc_scores", "\n")
             print(end_time - start_time, "total", "\n")
-            print(self.highest_bin, "highest bin", "\n")
-            print(self.histogram_list,"histogram", "\n")
+            # print(self.highest_bin, "highest bin", "\n")
+            # print(self.histogram_list, "histogram", "\n")
         elif self.mode == "dynamic":
             print("dynamic mode")
             self.create_dynamic_histogram(X)
@@ -97,8 +101,8 @@ class HBOS2:
             print(execution_get_scores, "execution time get_scores", "\n")
             print(execution_calc_scores, "execution time calc_scores", "\n")
             print(end_time - start_time, "total", "\n")
-            print(self.highest_bin, "highest bin", "\n")
-            print(self.histogram_list, "histogram list", "\n")
+            # print(self.highest_bin, "highest bin", "\n")
+            # print(self.histogram_list, "histogram list", "\n")
 
         # Digitize() get for every Value in which bin it belongs in every Dimension
 
@@ -214,6 +218,9 @@ class HBOS2:
         print(self.n_bins_list, "number of bins")
         print(self.n_bins, "real number of bins")
 
+    def set_adjust(self, adjust):
+        self.adjust = adjust
+
     def set_is_nominal(self, is_nominal):
         self.is_nominal = is_nominal
 
@@ -248,6 +255,51 @@ class HBOS2:
                     max_score = score
             self.highest_score.append(max_score)
             self.score_list.append(scores_)
+
+    def get_scores_adjusted(self):  # wie in https://dergipark.org.tr/en/download/article-file/2959698
+        if self.mode == "dynamic":
+            self.get_scores()
+        else:
+            histogram_list_adjsuted = []
+            for i in range(self.features):
+                hist = []
+                tmphist = self.histogram_list[i]
+                tmphist_pad = np.pad(tmphist, (1, 1), 'constant')
+                for i in range(len(tmphist_pad) - 2):
+                    tmpvalue = (tmphist_pad[i] + tmphist_pad[i + 1] + tmphist_pad[i + 2]) / 3
+                    hist.append(tmpvalue)
+                histogram_list_adjsuted.append(hist)
+
+            for i in range(self.features):  # get highest bin
+                max = np.amax(histogram_list_adjsuted[i])
+                self.highest_bin.append(max)
+
+            for i in range(self.features):  # get the highest score
+                if self.features == 1:
+                    max_ = self.max_values_per_feature
+                else:
+                    max_ = self.max_values_per_feature[i]
+                if max_ == 0:
+                    max_ = 1.0
+                hist_ = histogram_list_adjsuted[i]
+                if (self.mode == "dynamic"):
+                    list = self.bin_with_list[i]
+                    binwith = list[0]
+                else:
+                    binwith = self.bin_with_list[i]
+                scores_ = []
+                max_score = (hist_[0]) / (binwith * 1 / (abs(max_)))
+                scores_.append(max_score)
+                for j in range(self.n_bins_list[i] - 1):
+                    if (self.mode == "dynamic"):
+                        binwith = list[j]
+                    score = (hist_[j + 1]) / (
+                            binwith * 1 / (abs(max_)))  # Bin Höhe / (Bin Breite / höchste win im Histogramm)
+                    scores_.append(score)
+                    if score > max_score:
+                        max_score = score
+                self.highest_score.append(max_score)
+                self.score_list.append(scores_)
 
     def set_mode(self, mode):
         self.mode = mode

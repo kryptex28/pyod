@@ -11,10 +11,13 @@ dataset=np.array(data)
 csv_dateipfad = '111111111.csv'
 
 mat_data = loadmat(r"C:\Users\david\Desktop\datasets\satimage-2.mat")
+mat_data = loadmat(r"C:\Users\david\Desktop\datasets\speech.mat")
 mat_dataset=mat_data['X']
 labels=mat_data['y']
 np.savetxt(csv_dateipfad,mat_dataset, delimiter=',')
-mat_data2=h5py.File(r"C:\Users\david\Desktop\datasets\http.mat")
+#mat_data2=h5py.File(r"C:\Users\david\Desktop\datasets\http.mat")
+mat_data2=h5py.File(r"C:\Users\david\Desktop\datasets\smtp.mat")
+
 
 mat_dataset2=mat_data2['X']
 print(mat_dataset2.shape,"dataset shape")
@@ -37,6 +40,7 @@ print(mat_dataset2.shape)
 #print(mat_dataset)
 mat_data2.close()
 clf = HBOS2()
+clf.set_adjust(True)
 clf.fit(mat_dataset)
 
 
@@ -44,10 +48,10 @@ hbos_scores = clf.hbos_scores
 hbos_orig=pd.DataFrame(mat_dataset)
 hbos_orig["label"]=labels
 hbos_orig['hbos'] = hbos_scores
-hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:1000]
+hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:400]
 hbos_top1000_data[:50]
 print(hbos_top1000_data)
-print(len(hbos_top1000_data[lambda x: x['label'] == 1]))
+print(len(hbos_top1000_data[lambda x: x['label'] == 1])," gefunden", "\n")
 
 clf2=HBOS2()
 clf2.set_mode("dynamic")
@@ -61,8 +65,8 @@ hbos_scores2 = clf2.hbos_scores
 hbos_orig2=pd.DataFrame(mat_dataset)
 hbos_orig2["label"]=labels
 hbos_orig2['hbos'] = hbos_scores2
-hbos_top1000_data2 = hbos_orig2.sort_values(by=['hbos'], ascending=False)[:25000]
+hbos_top1000_data2 = hbos_orig2.sort_values(by=['hbos'], ascending=False)[:400]
 hbos_top1000_data2[:50]
 print(hbos_top1000_data2)
-print(len(hbos_top1000_data2[lambda x: x['label'] == 1]))
+print(len(hbos_top1000_data2[lambda x: x['label'] == 1])," gefunden")
 
