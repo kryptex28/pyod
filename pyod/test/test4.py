@@ -34,11 +34,12 @@ if __name__ == "__main__":
     #data = df.iloc[:, :27]
     data= np.array(dataset)
 
-
+    clf.set_adjust(True)
     #clf.set_adjust(True)                                   #Works good with static and low n_bins (10)
     #print(clf.hbos_scores,"clf scores")
     #print(clf2.hbos_scores, "clf2 scores")
     clf.fit(data)
+
     hbos_scores=clf.hbos_scores
     hbos_orig = orig.copy()
     hbos_orig['hbos'] = hbos_scores
