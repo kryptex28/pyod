@@ -11,6 +11,9 @@ import numpy as np
 class HBOS2:
     def __init__(self, mode="static", adjust=False):
         # super(HBOS2, self).__init__(contamination=contamination)
+        self.samples_per_bin = "floor"           #ceil / floor
+        self.last_bin_merge = False
+        self.right_edge = False
         self.sorted_data = None
         self.mode = mode
         self.samples = None
@@ -42,7 +45,7 @@ class HBOS2:
         self.samples = len(X)
         print(self.samples, "samples")
         self.n_bins = round(math.sqrt(self.samples))
-        #self.n_bins=5
+        #self.n_bins="auto"
         self.is_nominal = np.zeros(self.features, dtype=bool)
 
         # Check if any features is nominal if yes encode all nominal features using scikit-learn LabelEncoder
@@ -51,6 +54,7 @@ class HBOS2:
             for i in range(len(self.is_nominal)):
                 if self.is_nominal[i]:
                     X[:, i] = le.fit_transform(X[:, i])
+
         # Create histograms for every dimension
         if self.mode == "static":
             print("static mode")
@@ -59,13 +63,17 @@ class HBOS2:
             self.digitize(X)
             end_timedigit = time.time()
             start_time_getscores = time.time()
+
+            # calculate raw scores for every bin
             if self.adjust:
-                self.get_scores_adjusted()
+                self.get_bin_scores_adjusted()  # (score[-i] + score[i] + score[i+1]) / 3
             else:
-                self.get_scores()
+                self.get_bin_scores()
             end_timegetscores = time.time()
+
+            # calculate the hbos scores for every i in range(len(data))
             start_time_calc = time.time()
-            self.calc_score()
+            self.calc_hbos_score()
             end_time = time.time()
             end_timefit = time.time()
             execution_timefit = end_timefit - start_time
@@ -86,10 +94,10 @@ class HBOS2:
             self.digitize(X)
             end_timedigit = time.time()
             start_time_getscores = time.time()
-            self.get_scores()
+            self.get_bin_scores()
             end_timegetscores = time.time()
             start_time_calc = time.time()
-            self.calc_score()
+            self.calc_hbos_score()
             end_time = time.time()
             end_timefit = time.time()
             execution_timefit = end_timefit - start_time
@@ -101,8 +109,8 @@ class HBOS2:
             print(execution_get_scores, "execution time get_scores", "\n")
             print(execution_calc_scores, "execution time calc_scores", "\n")
             print(end_time - start_time, "total", "\n")
-            # print(self.highest_bin, "highest bin", "\n")
-            # print(self.histogram_list, "histogram list", "\n")
+            print(self.highest_bin, "highest bin", "\n")
+            print(self.n_bins_list,"number of bins", "\n")
 
         # Digitize() get for every Value in which bin it belongs in every Dimension
 
@@ -142,8 +150,14 @@ class HBOS2:
             self.bin_edges_list.append(bin_edges)
 
     def create_dynamic_histogram(self, X):
-        # samples_per_bin = math.floor(self.samples / self.n_bins)
-        samples_per_bin = math.ceil(self.samples / self.n_bins)
+        if self.n_bins=="auto":
+            self.n_bins = round(math.sqrt(self.samples))
+        if (self.samples_per_bin == "ceil"):
+            samples_per_bin = math.ceil(self.samples / self.n_bins)
+        elif (self.samples_per_bin == "floor"):
+            samples_per_bin = math.floor(self.samples / self.n_bins)
+        else:
+            samples_per_bin = self.samples_per_bin
         print(samples_per_bin, "samples per bin")
 
         print(self.n_bins, "nbins")
@@ -197,26 +211,41 @@ class HBOS2:
                     edges.append(num)
                     counters.append(counter)
                 last = num
-            self.n_bins_list.append(len(binfirst))
+
             for edge in binfirst:
                 bin_edges.append(edge)
             bin_edges.append(binlast[-1])
+            if self.last_bin_merge:                                     # falls letztes bin länge 0, verschmelzen mit bin[-1]
+                if binlast[-1] - binfirst[-1] == 0:
+                    counters[-2] = counters[-2] + counters[-1]
+                    counters = np.delete(counters, -1)
+                    bin_edges = np.delete(bin_edges, -2)
+
+            self.n_bins_list.append(len(counters))
             self.histogram_list.append(counters)
             self.bin_edges_list.append(bin_edges)
-            for i in range(len(binfirst)):
-                bin_with = binlast[i] - binfirst[i]
-
-                # bin_with=binfirst[i+1] -binfirst[i]        falls bin with = bin start bis neue bin start
-                if bin_with == 0:
-                    bin_with = 1
-                bin_withs.append(bin_with)
-            # binwith = binlast[-1] - binfirst[-1]            falls bin with = bin start bis neue bin start
-            # if binwith == 0:
-            #    binwith = 1
-            # bin_withs.append(binwith)
+            if self.right_edge:
+                for i in range(len(counters) - 1):
+                    bin_with = binfirst[i + 1] - binfirst[i]  # bin start bis neue bin start,
+                    if bin_with == 0:  # die rechte bin ist der nächste value außerhalb des bins
+                        bin_with = 1
+                    bin_withs.append(bin_with)
+                binwith = binlast[-1] - binfirst[-1]
+                if binwith == 0:
+                    binwith = 1
+                bin_withs.append(binwith)
+            else:
+                for i in range(len(binfirst)):
+                    bin_with = binlast[i] - binfirst[i]  # genaue bin edges
+                    if bin_with == 0:
+                        bin_with = 1
+                    bin_withs.append(bin_with)
             self.bin_with_list.append(bin_withs)
         print(self.n_bins_list, "number of bins")
         print(self.n_bins, "real number of bins")
+
+    def predict(self):
+        return self.hbos_scores
 
     def set_adjust(self, adjust):
         self.adjust = adjust
@@ -224,7 +253,7 @@ class HBOS2:
     def set_is_nominal(self, is_nominal):
         self.is_nominal = is_nominal
 
-    def get_scores(self):
+    def get_bin_scores(self):
         for i in range(self.features):  # get highest bin
             max = np.amax(self.histogram_list[i])
             self.highest_bin.append(max)
@@ -236,6 +265,7 @@ class HBOS2:
                 max_ = self.max_values_per_feature[i]
             if max_ == 0:
                 max_ = 1.0
+
             hist_ = self.histogram_list[i]
             if (self.mode == "dynamic"):
                 list = self.bin_with_list[i]
@@ -243,22 +273,22 @@ class HBOS2:
             else:
                 binwith = self.bin_with_list[i]
             scores_ = []
-            max_score = (hist_[0]) / (binwith * 1 / (abs(max_)))
+            max_score = (hist_[0]) / (binwith * self.samples / (abs(max_)))
             scores_.append(max_score)
             for j in range(self.n_bins_list[i] - 1):
                 if (self.mode == "dynamic"):
-                    binwith = list[j]
+                    binwith = list[j + 1]
                 score = (hist_[j + 1]) / (
-                        binwith * 1 / (abs(max_)))  # Bin Höhe / (Bin Breite / höchste win im Histogramm)
+                            binwith * self.samples / (abs(max_)))  # Bin Höhe / (Bin Breite / höchste win im Histogramm)
                 scores_.append(score)
                 if score > max_score:
                     max_score = score
             self.highest_score.append(max_score)
             self.score_list.append(scores_)
 
-    def get_scores_adjusted(self):  # wie in https://dergipark.org.tr/en/download/article-file/2959698
+    def get_bin_scores_adjusted(self):  # wie in https://dergipark.org.tr/en/download/article-file/2959698
         if self.mode == "dynamic":
-            self.get_scores()
+            self.get_bin_scores()
         else:
             histogram_list_adjsuted = []
             for i in range(self.features):
@@ -304,9 +334,8 @@ class HBOS2:
     def set_mode(self, mode):
         self.mode = mode
 
-    def calc_score(self):
+    def calc_hbos_score(self):
         for i in range(self.samples):
-
             score = 0
             for b in range(self.features):
                 maxscore = self.highest_score[b]

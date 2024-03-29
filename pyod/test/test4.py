@@ -1,7 +1,7 @@
 from numpy import genfromtxt
 from scipy.io import arff
 from sklearn.preprocessing import LabelEncoder
-
+from matplotlib import pyplot as plt
 from pyod.models.hbos2 import HBOS2
 
 import pandas as pd
@@ -30,11 +30,10 @@ if __name__ == "__main__":
     del dataset['Amount']
     del dataset['Class']
 
-    df = pd.DataFrame(data[0])
-    data = df.iloc[:, :27]
+    #df = pd.DataFrame(data[0])
+    #data = df.iloc[:, :27]
     data= np.array(dataset)
-    print(len(data), " samples")
-    print(data.shape)
+
 
     #clf.set_adjust(True)                                   #Works good with static and low n_bins (10)
     #print(clf.hbos_scores,"clf scores")
@@ -47,6 +46,15 @@ if __name__ == "__main__":
     hbos_top1000_data[:50]
     print(hbos_top1000_data)
     print(len(hbos_top1000_data[lambda x: x['Class'] == 1])," gefunden")
+
+
+
+    '''print(hbos_top1000_data['Class'].cumsum().sum())
+    plt.scatter(range(1000), hbos_top1000_data['Class'].cumsum(), marker='1')
+    plt.xlabel('Top N data')
+    plt.ylim(0,500)
+    plt.ylabel('Anomalies found')
+    plt.show()'''
 
     clf2.set_mode("dynamic")
     clf2.fit(data)

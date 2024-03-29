@@ -1,10 +1,10 @@
 import math
+import time
 from itertools import repeat
 
 import numpy as np
 import pandas as pd
 from pandas import DataFrame
-from scipy.io import arff
 
 
 class HBOS:
@@ -67,6 +67,7 @@ class HBOS:
                         values_per_bin = math.floor(len(sorted_data) / self.bin_info_array[attrIndex])
                         last = self.create_dynamic_histogram(self.histogram_list, sorted_data, last, values_per_bin,
                                                              attrIndex, False)
+                        print(last, "last")
                         if binwidth > 1:
                             length = length - self.histogram_list[attrIndex][-1].quantity
                             binwidth = binwidth - 1
@@ -98,9 +99,10 @@ class HBOS:
                 _bin = histogram[k]
                 _bin.total_data_size = total_data_size
                 _bin.calc_score(maximum_value_of_rows[i])
+                print(_bin.calc_score(maximum_value_of_rows[i]),"bin score")
                 if max_score[i] < _bin.score:
                     max_score[i] = _bin.score
-
+        print(max_score, "max score")
         for i in range(len(self.histogram_list)):
             histogram = self.histogram_list[i]
             for k in range(len(histogram)):
@@ -120,11 +122,14 @@ class HBOS:
                 score = self.get_score(self.histogram_list[attr], each_data[attr])
                 if self.log_scale:
                     value = value + score
+
                 elif self.ranked:
                     value = value + score
                 else:
                     value = value * score
             score_array.append(value)
+
+
         return score_array
 
     def fit_predict(self, data):
@@ -272,7 +277,7 @@ class HistogramBin:
         if self.quantity > 0:
             self.score = 1.0 * self.quantity / (
                 (self.range_to - self.range_from) * self.total_data_size * 1.0 / abs(max_score))
-
+        print("test,test")
     def normalize_score(self, normal, max_score, log_scale):
         self.score = self.score * normal / max_score
         if self.score == 0:
@@ -406,13 +411,30 @@ def test_create_static_histogram():
 
 hbos = HBOS()
 dataset = pd.read_csv(r"C:\Users\david\Desktop\datasets\creditcard.csv")
+data1 = DataFrame(data=[1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 4, 5, 7, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 10])
 orig = dataset.copy()
 del dataset['Time']
 del dataset['Amount']
 del dataset['Class']
 # Konvertieren Sie die Daten in ein Pandas DataFrame
 
+start_timedigit = time.time()
+result = hbos.fit_predict(data1)
+end_timedigit = time.time()
 
-result = hbos.fit_predict(dataset)
-result = np.round(result, 3)
-print(result)
+histogram = hbos.histogram_list[0]
+result_list = []
+for i in range(len(histogram)):
+    result_list.append(histogram[i].quantity)
+print(result_list,"resukt:kust")
+print(end_timedigit - start_timedigit, "predict")
+#print(result)
+#test_create_dynamic_histogram()
+#result = np.round(result, 3)
+#print(result)
+
+#list, histo, hbos = test_create_dynamic_histogram()
+#print(list,"list")
+#print(list[1], "lol")
+#print(histo,"histo")
+

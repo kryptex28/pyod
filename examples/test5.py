@@ -1,4 +1,5 @@
 import pandas as pd
+from matplotlib import pyplot as plt
 from scipy.io import loadmat, arff
 import numpy as np
 import h5py
@@ -11,7 +12,7 @@ dataset=np.array(data)
 csv_dateipfad = '111111111.csv'
 
 mat_data = loadmat(r"C:\Users\david\Desktop\datasets\satimage-2.mat")
-mat_data = loadmat(r"C:\Users\david\Desktop\datasets\speech.mat")
+#mat_data = loadmat(r"C:\Users\david\Desktop\datasets\speech.mat")
 mat_dataset=mat_data['X']
 labels=mat_data['y']
 np.savetxt(csv_dateipfad,mat_dataset, delimiter=',')
@@ -41,7 +42,7 @@ print(mat_dataset2.shape)
 mat_data2.close()
 clf = HBOS2()
 clf.set_adjust(True)
-clf.fit(mat_dataset)
+clf.fit(dataset)
 
 
 hbos_scores = clf.hbos_scores
@@ -52,6 +53,12 @@ hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:400]
 hbos_top1000_data[:50]
 print(hbos_top1000_data)
 print(len(hbos_top1000_data[lambda x: x['label'] == 1])," gefunden", "\n")
+
+print(hbos_top1000_data['label'].cumsum().sum())
+plt.scatter(range(400), hbos_top1000_data['label'].cumsum(), marker='1')
+plt.xlabel('Top N data')
+plt.ylabel('Anomalies found')
+plt.show()
 
 clf2=HBOS2()
 clf2.set_mode("dynamic")
