@@ -11,6 +11,8 @@ import numpy as np
 class HBOS2:
     def __init__(self, mode="static", adjust=False):
         # super(HBOS2, self).__init__(contamination=contamination)
+        self.save_scores = True
+        self.all_scores_per_sample = []
         self.samples_per_bin = "floor"  # ceil / floor
         self.last_bin_merge = True
         self.right_edge = True
@@ -45,7 +47,7 @@ class HBOS2:
         self.samples = len(X)
         print(self.samples, "samples")
         self.n_bins = round(math.sqrt(self.samples))
-        # self.n_bins="auto"
+        #self.n_bins="auto"
         self.is_nominal = np.zeros(self.features, dtype=bool)
 
         # Check if any features is nominal if yes encode all nominal features using scikit-learn LabelEncoder
@@ -337,6 +339,7 @@ class HBOS2:
     def calc_hbos_score(self):
         for i in range(self.samples):
             score = 0
+            all_scores=[]
             for b in range(self.features):
                 maxscore = self.highest_score[b]
                 scores_b = self.score_list[b]
@@ -346,4 +349,10 @@ class HBOS2:
                 tmpscore = tmpscore * 1 / maxscore
                 tmpscore = 1 / tmpscore
                 score = score + math.log10(tmpscore)
+                if self.save_scores:
+                    all_scores.append((b+1,tmpscore))
+            if self.save_scores:
+                all_scores.sort(key = lambda x: x[1],reverse = True)
+                self.all_scores_per_sample.append(all_scores)
+
             self.hbos_scores.append(score)
