@@ -32,14 +32,8 @@ if __name__ == "__main__":
     del dataset['Time']
     del dataset['Amount']
     del dataset['Class']
-
-    #df = pd.DataFrame(data[0])
-    #data = df.iloc[:, :27]
     data= np.array(dataset)
-    #clf.set_adjust(True)
-    #clf.set_adjust(True)                                   #Works good with static and low n_bins (10)
-    #print(clf.hbos_scores,"clf scores")
-    #print(clf2.hbos_scores, "clf2 scores")
+
 
     '''c=20
     time2=0
@@ -52,8 +46,10 @@ if __name__ == "__main__":
     time2=time2
     print(time2,"time")'''
 
-
+    clf.set_adjust(True)
+    clf.set_save_scores(True)
     clf.fit(data)
+
     hbos_scores=clf.hbos_scores
     hbos_orig = orig.copy()
     hbos_orig['hbos'] = hbos_scores
@@ -72,7 +68,9 @@ if __name__ == "__main__":
     plt.show()'''
 
     clf2.set_mode("dynamic")
+    clf2.set_save_scores(True)
     clf2.fit(data)
+
     hbos_scores2 = clf2.hbos_scores
     hbos_orig2= orig.copy()
     hbos_orig2['hbos'] = hbos_scores2
@@ -82,11 +80,6 @@ if __name__ == "__main__":
     print(len(hbos_top1000_data2[lambda x: x['Class'] == 1])," gefunden")
     resultscores=clf2.all_scores_per_sample
     print(len(resultscores))
-    numer1=0
-    for i in range(len(resultscores)):
-        numer1= numer1 + resultscores[i][0][0]
-
-    numer1=numer1/len(resultscores)
 
     erste_werte = [subliste[0][0] for subliste in resultscores]
     zweite_werte = [subliste[1][0] for subliste in resultscores]
@@ -96,9 +89,9 @@ if __name__ == "__main__":
     wert_zähler3 = Counter(dritte_werte)
     values= np.array(resultscores)
 
-    print(wert_zähler,"wert zöhler")
-    print(wert_zähler2, "wert zöhler2")
-    print(wert_zähler3, "wert zöhler3")
+    print("wert zähler1",wert_zähler)
+    print("wert zähler2",wert_zähler2)
+    print("wert zähler3",wert_zähler3)
 
 
     resultscores=clf2.all_scores_per_sample[:50]

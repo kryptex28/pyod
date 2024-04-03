@@ -67,7 +67,7 @@ class HBOS:
                         values_per_bin = math.floor(len(sorted_data) / self.bin_info_array[attrIndex])
                         last = self.create_dynamic_histogram(self.histogram_list, sorted_data, last, values_per_bin,
                                                              attrIndex, False)
-                        print(last, "last")
+
                         if binwidth > 1:
                             length = length - self.histogram_list[attrIndex][-1].quantity
                             binwidth = binwidth - 1
@@ -99,10 +99,10 @@ class HBOS:
                 _bin = histogram[k]
                 _bin.total_data_size = total_data_size
                 _bin.calc_score(maximum_value_of_rows[i])
-                print(_bin.calc_score(maximum_value_of_rows[i]),"bin score")
+
                 if max_score[i] < _bin.score:
                     max_score[i] = _bin.score
-        print(max_score, "max score")
+
         for i in range(len(self.histogram_list)):
             histogram = self.histogram_list[i]
             for k in range(len(histogram)):
@@ -277,7 +277,7 @@ class HistogramBin:
         if self.quantity > 0:
             self.score = 1.0 * self.quantity / (
                 (self.range_to - self.range_from) * self.total_data_size * 1.0 / abs(max_score))
-        print("test,test")
+
     def normalize_score(self, normal, max_score, log_scale):
         self.score = self.score * normal / max_score
         if self.score == 0:
@@ -409,32 +409,75 @@ def test_create_static_histogram():
 
     print(result_list)
 
-hbos = HBOS()
+
 dataset = pd.read_csv(r"C:\Users\david\Desktop\datasets\creditcard.csv")
 data1 = DataFrame(data=[1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 4, 5, 7, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 10])
 orig = dataset.copy()
 del dataset['Time']
 del dataset['Amount']
 del dataset['Class']
-# Konvertieren Sie die Daten in ein Pandas DataFrame
+
+
+bin=[]
+mode=[]
+nominal=[]
+
+for i in dataset.columns:
+    bin.append(-1)
+    mode.append("static binwith")
+    nominal.append(False)
+
+
+hbos = HBOS()
 
 start_timedigit = time.time()
-result = hbos.fit_predict(data1)
+hbos.fit(dataset)
 end_timedigit = time.time()
+print(end_timedigit - start_timedigit)
 
-histogram = hbos.histogram_list[0]
-result_list = []
-for i in range(len(histogram)):
-    result_list.append(histogram[i].quantity)
-print(result_list,"resukt:kust")
-print(end_timedigit - start_timedigit, "predict")
-#print(result)
-#test_create_dynamic_histogram()
-#result = np.round(result, 3)
-#print(result)
+start_timedigit = time.time()
+result=hbos.predict(dataset)
+end_timedigit = time.time()
+print(end_timedigit - start_timedigit)
 
-#list, histo, hbos = test_create_dynamic_histogram()
-#print(list,"list")
-#print(list[1], "lol")
-#print(histo,"histo")
 
+hbos_scores=result
+hbos_orig = orig.copy()
+hbos_orig['hbos'] = hbos_scores
+hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:1000]
+hbos_top1000_data[:50]
+print(hbos_top1000_data)
+print(len(hbos_top1000_data[lambda x: x['Class'] == 1])," gefunden")
+
+print("---------------------------------------------------------","\n")
+
+bin2=[]
+mode2=[]
+nominal2=[]
+
+for i in dataset.columns:
+    bin2.append(-1)
+    mode2.append("static binwith")
+    nominal2.append(False)
+
+hbos2 = HBOS(log_scale=True, ranked=False, bin_info_array=bin2, mode_array=mode2,
+                nominal_array=nominal2)
+start_timedigit = time.time()
+hbos2.fit(dataset)
+end_timedigit = time.time()
+print(end_timedigit - start_timedigit, " fit")
+
+start_timedigit = time.time()
+result2=hbos2.predict(dataset)
+end_timedigit = time.time()
+print(end_timedigit - start_timedigit," predict")
+
+
+hbos2.fit(dataset)
+hbos_scores2 = result2
+hbos_orig2 = orig.copy()
+hbos_orig2['hbos'] = hbos_scores2
+hbos_top1000_data2 = hbos_orig2.sort_values(by=['hbos'], ascending=False)[:1000]
+hbos_top1000_data2[:50]
+print(hbos_top1000_data2)
+print(len(hbos_top1000_data2[lambda x: x['Class'] == 1]), " gefunden")

@@ -42,37 +42,37 @@ print(mat_dataset2.shape)
 mat_data2.close()
 clf = HBOS2()
 clf.set_adjust(True)
-clf.fit(dataset)
+clf.fit(mat_dataset2)
 
 
 hbos_scores = clf.hbos_scores
-hbos_orig=pd.DataFrame(mat_dataset)
-hbos_orig["label"]=labels
+hbos_orig=pd.DataFrame(mat_dataset2)
+hbos_orig["label"]=labels2
 hbos_orig['hbos'] = hbos_scores
-hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:400]
+hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:1000]
 hbos_top1000_data[:50]
 print(hbos_top1000_data)
 print(len(hbos_top1000_data[lambda x: x['label'] == 1])," gefunden", "\n")
 
 print(hbos_top1000_data['label'].cumsum().sum())
-plt.scatter(range(400), hbos_top1000_data['label'].cumsum(), marker='1')
+plt.scatter(range(1000), hbos_top1000_data['label'].cumsum(), marker='1')
 plt.xlabel('Top N data')
 plt.ylabel('Anomalies found')
 plt.show()
 
 clf2=HBOS2()
 clf2.set_mode("dynamic")
-clf2.fit(mat_dataset)
+clf2.fit(mat_dataset2)
 
 #liste=np.sort(clf2.hbos_scores)[::-1]
 #np.set_printoptions(threshold=np.inf)
 #first100=liste[0:1000]
 #print(first100,"scores")
 hbos_scores2 = clf2.hbos_scores
-hbos_orig2=pd.DataFrame(mat_dataset)
-hbos_orig2["label"]=labels
+hbos_orig2=pd.DataFrame(mat_dataset2)
+hbos_orig2["label"]=labels2
 hbos_orig2['hbos'] = hbos_scores2
-hbos_top1000_data2 = hbos_orig2.sort_values(by=['hbos'], ascending=False)[:400]
+hbos_top1000_data2 = hbos_orig2.sort_values(by=['hbos'], ascending=False)[:1000]
 hbos_top1000_data2[:50]
 print(hbos_top1000_data2)
 print(len(hbos_top1000_data2[lambda x: x['label'] == 1])," gefunden")

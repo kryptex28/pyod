@@ -124,14 +124,21 @@ if(start):
             bin_withs.append(binwith)
         bin_with_list.append(bin_withs)
 
-dataset= np.array([1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 3, 3, 3, 3, 4, 5, 7, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 10]) #15
+dataset= np.array([(1,"hund"),(555,"hund"),(1,"tomate"),(2,"jerb"),(4,"berb"),(5,"hund"),(7,"hund"),(6,"hund"),(8,"hund"),(9,"hund"),(5,"hund")]) #15
 hbos= HBOS2()
 hbos.set_mode("dynamic")
+isnominal=np.array([(False),(True)])
+hbos.set_is_nominal(isnominal)
 hbos.fit(dataset)
 print(hbos.histogram_list)
+
+
+
+
 print(hbos.hbos_scores,"scores", len(hbos.hbos_scores))
 print(hbos.bin_edges_list,"edges")
 print(hbos.bin_with_list,"withs")
+print(hbos.all_scores_per_sample,"all")
 #print(bin_edges, " edges \n",binfirst," bin first \n",binlast, " bin last \n", counters, " counters \n")
 #print(n_bins_list,"n_bins_list")
 #print(histogram_list," histo 1")
