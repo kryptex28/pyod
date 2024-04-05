@@ -130,14 +130,14 @@ hbos.set_mode("dynamic")
 isnominal=np.array([(False),(True)])
 hbos.set_is_nominal(isnominal)
 hbos.fit(dataset)
-print(hbos.histogram_list)
+print(hbos.histogram_array)
 
 
 
 
 print(hbos.hbos_scores,"scores", len(hbos.hbos_scores))
-print(hbos.bin_edges_list,"edges")
-print(hbos.bin_with_list,"withs")
+print(hbos.bin_edges_array, "edges")
+print(hbos.bin_width_array, "withs")
 print(hbos.all_scores_per_sample,"all")
 #print(bin_edges, " edges \n",binfirst," bin first \n",binlast, " bin last \n", counters, " counters \n")
 #print(n_bins_list,"n_bins_list")

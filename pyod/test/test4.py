@@ -33,7 +33,7 @@ if __name__ == "__main__":
     del dataset['Amount']
     del dataset['Class']
     data= np.array(dataset)
-
+    hbos_orig = orig.copy()
 
     '''c=20
     time2=0
@@ -46,15 +46,19 @@ if __name__ == "__main__":
     time2=time2
     print(time2,"time")'''
 
-    clf.set_adjust(True)
-    clf.set_save_scores(True)
+
+    #clf.set_adjust(True)
+    #clf.set_save_scores(True)
+    #firstrow = hbos_orig["V1"]
+    #firstrow = np.array(firstrow)
+    clf.set_mode("static")
     clf.fit(data)
 
     hbos_scores=clf.hbos_scores
-    hbos_orig = orig.copy()
+
     hbos_orig['hbos'] = hbos_scores
     hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:1000]
-
+    hbos_top1000_data.to_csv('hbos_top1000_data.txt')
     print(hbos_top1000_data)
     print(len(hbos_top1000_data[lambda x: x['Class'] == 1])," gefunden")
 
@@ -68,18 +72,24 @@ if __name__ == "__main__":
     plt.show()'''
 
     clf2.set_mode("dynamic")
-    clf2.set_save_scores(True)
+    #clf2.set_save_scores(True)
     clf2.fit(data)
 
     hbos_scores2 = clf2.hbos_scores
     hbos_orig2= orig.copy()
     hbos_orig2['hbos'] = hbos_scores2
     hbos_top1000_data2 = hbos_orig2.sort_values(by=['hbos'], ascending=False)[:1000]
+    hbos_top1000_data2.to_csv('hbos_top1000_data2.txt')
     hbos_top1000_data2[:50]
     print(hbos_top1000_data2)
+    firstrow = hbos_orig["V1"]
+    firstrow= np.array(firstrow)
+#    firstrow.to_csv('firstrow.txt')
+
+
+    #test.to_csv("testforjava.txt")
     print(len(hbos_top1000_data2[lambda x: x['Class'] == 1])," gefunden")
-    resultscores=clf2.all_scores_per_sample
-    print(len(resultscores))
+    '''resultscores=clf2.all_scores_per_sample
 
     erste_werte = [subliste[0][0] for subliste in resultscores]
     zweite_werte = [subliste[1][0] for subliste in resultscores]
@@ -91,13 +101,13 @@ if __name__ == "__main__":
 
     print("wert zähler1",wert_zähler)
     print("wert zähler2",wert_zähler2)
-    print("wert zähler3",wert_zähler3)
+    print("wert zähler3",wert_zähler3)'''
 
 
-    resultscores=clf2.all_scores_per_sample[:50]
-    print(resultscores)
-
-
+clf3=HBOS2()
+test=np.array([(1, 9), (2, 8), (3, 7), (4, 6), (5, 5), (6, 4), (7, 3), (8, 2), (9, 1) ])
+clf3.fit(test)
+print(clf3.hbos_scores)
 
 
 

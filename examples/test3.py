@@ -428,9 +428,10 @@ for i in dataset.columns:
     nominal.append(False)
 
 
-hbos = HBOS()
+'''hbos = HBOS()
 
 start_timedigit = time.time()
+
 hbos.fit(dataset)
 end_timedigit = time.time()
 print(end_timedigit - start_timedigit)
@@ -440,14 +441,14 @@ result=hbos.predict(dataset)
 end_timedigit = time.time()
 print(end_timedigit - start_timedigit)
 
-
+print(hbos.get_score())
 hbos_scores=result
 hbos_orig = orig.copy()
 hbos_orig['hbos'] = hbos_scores
 hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:1000]
 hbos_top1000_data[:50]
 print(hbos_top1000_data)
-print(len(hbos_top1000_data[lambda x: x['Class'] == 1])," gefunden")
+print(len(hbos_top1000_data[lambda x: x['Class'] == 1])," gefunden")'''
 
 print("---------------------------------------------------------","\n")
 
