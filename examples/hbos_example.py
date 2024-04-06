@@ -1,3 +1,4 @@
+
 # -*- coding: utf-8 -*-
 """Example of using Histogram- based outlier detection (HBOS) for
 outlier detection
@@ -16,7 +17,7 @@ import sys
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname("__file__"), '..')))
 
-from pyod.models.hbos import HBOS
+from pyod.models.HbosPyod  import HBOSPYOD
 from pyod.utils.data import generate_data
 from pyod.utils.data import evaluate_print
 from pyod.utils.example import visualize
@@ -34,21 +35,21 @@ if __name__ == "__main__":
                       contamination=contamination,
                       random_state=42)
 
+    X_test = X_train
+    y_test = y_train
     # train HBOS detector
-    clf_name = 'HBOS'
-    clf = HBOS()
+    clf_name = 'HBOSPYOD'
+    clf = HBOSPYOD()
     clf.fit(X_train)
-
 
     # get the prediction labels and outlier scores of the training data
     y_train_pred = clf.labels_  # binary labels (0: inliers, 1: outliers)
     y_train_scores = clf.decision_scores_  # raw outlier scores
 
     # get the prediction on the test data
-    y_test_pred = clf.predict(X_test)  # outlier labels (0 or 1)
-    y_test_scores = clf.decision_function(X_test)  # outlier scores
-    print(y_test_pred, y_test_scores,"hello")
-    print("\n")
+    y_test_pred =   y_train_pred  # outlier labels (0 or 1)
+    y_test_scores = y_train_scores  # outlier scores
+
     # evaluate and print the results
     print("\nOn Training Data:")
     evaluate_print(clf_name, y_train, y_train_scores)
@@ -57,4 +58,4 @@ if __name__ == "__main__":
 
     # visualize the results
     visualize(clf_name, X_train, y_train, X_test, y_test, y_train_pred,
-              y_test_pred, show_figure=True, save_figure=False)
+             y_test_pred, show_figure=True, save_figure=False)

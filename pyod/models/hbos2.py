@@ -6,13 +6,14 @@ import numpy as np
 
 
 class HBOS2:
-    def __init__(self, mode="static", adjust=False, save_scores=False, log_scale=False, ranked=False, version=1):
+    def __init__(self, mode="static", adjust=False, save_scores=False, log_scale=True, ranked=True, version=1):
         # super(HBOS2, self).__init__(contamination=contamination)
         self.version = version
         self.ranked = ranked
         self.log_scale = log_scale
         self.save_scores = save_scores
         self.all_scores_per_sample = []
+        self.all_scores_per_sample_dict={}
         self.samples_per_bin = "floor"  # ceil / floor
         self.mode = mode
         self.samples = None
@@ -185,19 +186,19 @@ class HBOS2:
                 idataset = X
             data, anzahl = np.unique(idataset, return_counts=True)
             counter = 0
-            for num, anzahl_ in zip(data, anzahl):
+            for num, quantity_of_num in zip(data, anzahl):
                 if counter == 0:
                     binfirst.append(num)
-                    counter = counter + anzahl_
-                elif anzahl_ <= samples_per_bin:
+                    counter = counter + quantity_of_num
+                elif quantity_of_num <= samples_per_bin:
                     if counter < samples_per_bin:
-                        counter = counter + anzahl_
+                        counter = counter + quantity_of_num
                 else:
                     binlast.append(last)
                     counters.append(counter)
                     binfirst.append(num)
                     binlast.append(num)
-                    counter=anzahl_
+                    counter=quantity_of_num
                     counters.append(counter)
                     counter = 0
 
@@ -349,10 +350,10 @@ class HBOS2:
         ranked_scores = []  # im many bins are empty ( static) many early ranks are 0
         for i in range(self.features):
             scores_i = self.score_array[i]
-            argsort = np.argsort(scores_i)  # gives back the indices in scores_i from small to big  x[first] = smallest
+            sorted_indices = np.argsort(scores_i)  # gives back the indices in scores_i from small to big  x[first] = smallest
             ranks = np.zeros(len(scores_i), dtype=int)
             current_rank = 1
-            for ids in argsort:
+            for ids in sorted_indices:
                 ranks[ids] = current_rank
                 current_rank += 1
 
@@ -375,7 +376,7 @@ class HBOS2:
             ranked_scores.append(new_ranks)
         self.score_array = ranked_scores
 
-    '''def rank_scores2(self):  # rank scores same scores different ranks, if bin is empty (score 0) we do not include it
+    def rank_scores2(self):  # rank scores same scores different ranks, if bin is empty (score 0) we do not include it
         ranked_scores = []
         for i in range(self.features):
             scores_i = self.score_array[i]
@@ -389,7 +390,7 @@ class HBOS2:
                     ranks[tmpid] = counter
                     counter = counter + 1
             ranked_scores.append(ranks)
-        self.score_array = ranked_scores'''
+        self.score_array = ranked_scores
 
     def rank_scores4(self):
         ranked_scores = []
@@ -409,7 +410,7 @@ class HBOS2:
 
     def calc_hbos_score(self):
         if self.ranked:
-            self.rank_scores()
+            self.rank_scores4()
         for i in range(self.samples):
             if self.log_scale:
                 score = 0
@@ -417,22 +418,27 @@ class HBOS2:
                 score = 0
             else:
                 score = 1
+            scores_per_sample=[]
             for b in range(self.features):
                 scores_b = self.score_array[b]
                 idlist = self.bin_id_array[b]
                 idtmp = idlist[i]
                 tmpscore = scores_b[idtmp - 1]
+                if self.save_scores:
+                    scores_per_sample.append(tmpscore)
                 if self.log_scale:
                     score = score + math.log10(tmpscore)
                 elif self.ranked:
                     score = score + tmpscore
                 else:
                     score = score * tmpscore
+            if self.save_scores:
+                self.all_scores_per_sample_dict[i]=scores_per_sample
             self.hbos_scores.append(score)
 
     def calc_hbos_score_with_normalize(self):
         if self.ranked:
-            self.rank_scores4()
+            self.rank_scores()
         for i in range(self.samples):
             if self.log_scale:
                 score = 0
