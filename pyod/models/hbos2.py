@@ -8,7 +8,7 @@ from .base import BaseDetector
 
 
 class HBOS2(BaseDetector):
-    def __init__(self, mode="static",n_bins="auto", adjust=False, save_scores=False, log_scale=True, ranked=False, version=1,
+    def __init__(self, mode="static",n_bins="auto", adjust=False, save_scores=True, log_scale=True, ranked=False, version=1,
                  alpha=0.1, tol=0.5, contamination=0.1):
         super(HBOS2, self).__init__(contamination=contamination)
         self.version = version
@@ -46,7 +46,6 @@ class HBOS2(BaseDetector):
         start_time_total = time.time()
         if self.ranked:
             self.log_scale = False
-
 
         self._set_n_classes(y)
         if len(X.shape) > 1:
@@ -435,7 +434,7 @@ class HBOS2(BaseDetector):
 
     def calc_hbos_score(self):
         if self.ranked:
-            self.rank_scores4()
+            self.rank_scores2()
         for i in range(self.samples):
             if self.log_scale:
                 score = 0
@@ -449,14 +448,15 @@ class HBOS2(BaseDetector):
                 idlist = self.bin_id_array[b]
                 idtmp = idlist[i]
                 tmpscore = scores_b[idtmp - 1]
-                if self.save_scores:
-                    scores_per_sample.append(tmpscore)
                 if self.ranked:
                     score = score + tmpscore
                 elif self.log_scale:
-                    score = score + math.log10(tmpscore)
+                    tmpscore = math.log10(tmpscore)
+                    score = score + tmpscore
                 else:
                     score = score * tmpscore
+                if self.save_scores:
+                    scores_per_sample.append(tmpscore)
             if self.save_scores:
                 self.all_scores_per_sample_dict[i] = scores_per_sample
             self.hbos_scores.append(score)

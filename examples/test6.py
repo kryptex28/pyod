@@ -1,20 +1,14 @@
 import numpy as np
 import pandas as pd
 
-from pyod.models.hbos2 import HBOS2
+from pyod.models.hbosPyod import HBOSPYOD
 
 scores = [0, 0, 0, 0, 0, 0, 0, 1, 2, 4, 5, 6, 1, 1, 1, 9, 2, 2, 2, 2, 10, 10, 110, 0, 1, 1]
-# Mittelwert und Standardabweichung der Normalverteilung
 mu = 500  # Mittelwert auf die Mitte des Bereichs von 1 bis 1000 setzen
 sigma = 200  # Standardabweichung nach Bedarf anpassen
-
-# Generiere normalverteilte Zahlen
 normal_values = np.random.normal(mu, sigma, 1000)
-
-# Skaliere die normalverteilten Zahlen, um sicherzustellen, dass sie im Bereich von 1 bis 1000 liegen
 scaled_values = normal_values.clip(1, 1000)
 
-# Runde die normalverteilten und skalierten Zahlen auf ganze Zahlen
 rounded_values = np.array(
     [423, 591, 130, 503, 546, 381, 518, 5, 641, 401, 467, 781, 597, 597, 652, 583, 452, 456, 414, 412, 308, 550, 233,
      402, 419, 415, 553, 507, 531, 369, 577, 521, 701, 652, 405, 665, 490, 322, 168, 481, 535, 612, 588, 521, 403, 492,
@@ -60,13 +54,17 @@ rounded_values = np.array(
      529, 274, 790, 632, 435, 485, 385, 753, 370, 504, 522, 553, 821, 527, 397, 737, 821, 247, 506, 343, 536, 912, 663,
      516, 392, 746, 611, 438, 613, 247, 537, 713, 543, 479, 498, 183, 70, 402, 492, 885, 525, 569, 770, 452, 834, 656,
      849, 672, 280, 487, 626, 747, 548, 147, 621, 366, 242, 649])
-print(sorted(rounded_values))
-rounded_values= np.unique(rounded_values)
-print(rounded_values[0],"222222222222222222222222222")
-rounded_values=np.delete(rounded_values,0)
+#print(sorted(rounded_values))
+#rounded_values= np.unique(rounded_values)
+#print(rounded_values[0],"222222222222222222222222222")
+#rounded_values=np.delete(rounded_values,0)
+
+
 
 print(rounded_values[0],"222222222222222222222222222")
+
 a = sorted(range(len(rounded_values)), key=lambda i: rounded_values[i])
+
 b = np.argsort(rounded_values)
 
 c = sorted(range(len(scores)), key=lambda i: scores[i])
@@ -74,58 +72,21 @@ d = np.argsort(scores)
 
 print(a[:20], "a")
 print(b[:20], "b")
+print(c[:20], "c")
+print(d[:20], "d")
 
-np.array([(1,9),(2,8),(3,7),(4,6),(5,5),(6,4),(7,3),(8,2),(9,1),])
+test = np.array([("sale","wooow"), ("sale","wooow"), ("jmjo","sadas")])
 
-ranked_scores = []
-
-scores_i = scores
-sorted_indices = sorted(range(len(rounded_values)), key=lambda i: rounded_values[i])
-
-ranks = np.zeros(len(rounded_values), dtype=int)
-current_rank = 1
-for idx in sorted_indices:
-    ranks[idx] = current_rank
-    current_rank += 1
-# print(ranks,"with indices")
+scores= np.array(scores)
+scores=scores.reshape(-1,1)
+clf= HBOSPYOD()
+clf.fit(scores)
 
 
-scores_i = scores
-argsort = np.argsort(rounded_values)
-ranks2 = np.zeros(len(rounded_values), dtype=int)
-current_rank = 1
-for ids in argsort:
-    ranks2[ids] = current_rank
-    current_rank += 1
+print(clf.histogram_array)
 
-# print(ranks,"with argsort")
 
-for id in a[:20]:
-    print(rounded_values[id])
-print("----------------------------------")
 
-for id in b[:20]:
-    print(rounded_values[id])
 
-for i in range(20):
-    if ranks[i] == ranks2[i]:
-        print("true")
-    else:
-        print("false")
-        print(ranks[i], "ranks")
-        print(ranks2[i], "ranks2")
 
-clf3=HBOS2()
-#clf3.set_mode("dynamic")
-clf3.fit(rounded_values,scores)
 
-sorted=sorted(clf3.hbos_scores,reverse=True)
-print(sorted)
-
-data, anzahl = np.unique(sorted, return_counts=True)
-data=np.array(data)
-anzahl= np.array(anzahl)
-data= np.sort(data)[::-1]
-
-print(data)
-print(anzahl)

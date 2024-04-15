@@ -17,6 +17,7 @@ if __name__ == "__main__":
     clf = HBOS2()
     clf2=HBOS2()
 
+
     dataset = pd.read_csv(r"C:\Users\david\Desktop\datasets\creditcard.csv")
     #data = arff.loadarff(r'C:\Users\david\Desktop\datasets\literature\ALOI\ALOI_withoutdupl_norm.arff')
     data = arff.loadarff(r'C:\Users\david\Desktop\datasets\literature\ALOI\ALOI_withoutdupl.arff')
@@ -57,7 +58,7 @@ if __name__ == "__main__":
     hbos_scores=clf.hbos_scores
 
     hbos_orig['hbos'] = hbos_scores
-    hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:1000]
+    hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:10]
     hbos_top1000_data.to_csv('hbos_top1000_data.txt')
     print(hbos_top1000_data)
     print(len(hbos_top1000_data[lambda x: x['Class'] == 1])," gefunden")
@@ -74,12 +75,14 @@ if __name__ == "__main__":
     clf2.set_mode("dynamic")
     #clf2.set_save_scores(True)
     clf2.fit(data)
-
+    res=clf2.predict_proba(data)
+    #print("TEST TEST TEST,", res)
+    ans = clf.predict(data)
+    #print("TEST",ans[:20])
     hbos_scores2 = clf2.hbos_scores
     hbos_orig2= orig.copy()
     hbos_orig2['hbos'] = hbos_scores2
     hbos_top1000_data2 = hbos_orig2.sort_values(by=['hbos'], ascending=False)[:1000]
-    hbos_top1000_data2.to_csv('hbos_top1000_data2.txt')
     hbos_top1000_data2[:50]
     print(hbos_top1000_data2)
     firstrow = hbos_orig["V1"]
@@ -105,9 +108,17 @@ if __name__ == "__main__":
 
 
 clf3=HBOS2()
-test=np.array([(1, 9), (2, 8), (3, 7), (4, 6), (5, 5), (6, 4), (7, 3), (8, 2), (9, 1) ])
-clf3.fit(test)
-print(clf3.hbos_scores)
+clf.set_mode("dynamic")
+
+mu = 500  # Mittelwert
+sigma = 200  # Standardabweichung
+normal_values = np.random.normal(mu, sigma, 1000)
+scaled_values = normal_values.clip(1, 1000)
+clf3.fit(scaled_values)
+print(clf3.histogram_array)
+print(clf3.predict_proba(scaled_values))
+my_dict= clf2.all_scores_per_sample_dict
+print(my_dict[0])
 
 
 
