@@ -10,11 +10,10 @@ from .base import BaseDetector
 
 class HBOSPYOD(BaseDetector):
     def __init__(self, mode="static", n_bins="auto", adjust=True, save_scores=False, log_scale=True, ranked=True,
-                 version=1, alpha=0.1, tol=0.5, contamination=0.1):
+                  alpha=0.1, tol=0.5, contamination=0.1):
         super(HBOSPYOD, self).__init__(contamination=contamination)
 
         self.same_score_same_rank = False
-        self.version = version
         self.ranked = ranked
         self.log_scale = log_scale
         self.adjust = adjust
@@ -89,19 +88,13 @@ class HBOSPYOD(BaseDetector):
 
             # calculate the hbos scores for every i in range(len(data))
 
-            if self.version == 1:
-                start_time_calc = time.time()
-                self.normalize_scores()
-                self.hbos_scores = self.calc_hbos_scores(self.samples, self.features, self.bin_id_array)
-                self.decision_scores_ = self.hbos_scores
-                self._process_decision_scores()
-                self.is_fitted_ = True
-            elif self.version == 2:
-                start_time_calc = time.time()
-                self.calc_hbos_score_with_normalize()
-                self.decision_scores_ = self.hbos_scores
-                self._process_decision_scores()
-                self.is_fitted_ = True
+            start_time_calc = time.time()
+            self.normalize_scores()
+            self.hbos_scores = self.calc_hbos_scores(self.samples, self.features, self.bin_id_array)
+            self.decision_scores_ = self.hbos_scores
+            self._process_decision_scores()
+            self.is_fitted_ = True
+
 
             end_time_calc = time.time()
             end_time_total = time.time()
@@ -127,19 +120,13 @@ class HBOSPYOD(BaseDetector):
             self.get_bin_scores()
             end_time_getscores = time.time()
 
-            if self.version == 1:
-                start_time_calc = time.time()
-                self.normalize_scores()
-                self.hbos_scores = self.calc_hbos_scores(self.samples, self.features, self.bin_id_array)
-                self.decision_scores_ = self.hbos_scores
-                self._process_decision_scores()
-                self.is_fitted_ = True
-            elif self.version == 2:
-                start_time_calc = time.time()
-                self.calc_hbos_score_with_normalize()
-                self.decision_scores_ = self.hbos_scores
-                self._process_decision_scores()
-                self.is_fitted_ = True
+
+            start_time_calc = time.time()
+            self.normalize_scores()
+            self.hbos_scores = self.calc_hbos_scores(self.samples, self.features, self.bin_id_array)
+            self.decision_scores_ = self.hbos_scores
+            self._process_decision_scores()
+            self.is_fitted_ = True
 
             end_time_calc = time.time()
             end_time_total = time.time()
@@ -452,7 +439,7 @@ class HBOSPYOD(BaseDetector):
             hbos_scores.append(score)
         return np.array(hbos_scores)
 
-    def calc_hbos_score_with_normalize(self):
+    '''def calc_hbos_score_with_normalize(self):
         if self.ranked:
             self.rank_scores_no_empty_bins()
         for i in range(self.samples):
@@ -483,7 +470,7 @@ class HBOSPYOD(BaseDetector):
                 all_scores.sort(key=lambda x: x[1], reverse=True)
                 self.all_scores_per_sample.append(all_scores)
 
-            self.hbos_scores.append(score)
+            self.hbos_scores.append(score)'''
 
     def decision_function(self, X):
         check_is_fitted(self, ['is_fitted_'])
