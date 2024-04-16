@@ -3,6 +3,7 @@ import time
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils import check_array
 import numpy as np
+from sklearn.utils.validation import check_is_fitted
 
 from .base import BaseDetector
 
@@ -11,6 +12,7 @@ class HBOSPYOD(BaseDetector):
     def __init__(self, mode="static", n_bins="auto", adjust=True, save_scores=False, log_scale=True, ranked=True,
                  version=1, alpha=0.1, tol=0.5, contamination=0.1):
         super(HBOSPYOD, self).__init__(contamination=contamination)
+
         self.same_score_same_rank = False
         self.version = version
         self.ranked = ranked
@@ -93,11 +95,13 @@ class HBOSPYOD(BaseDetector):
                 self.hbos_scores = self.calc_hbos_scores(self.samples, self.features, self.bin_id_array)
                 self.decision_scores_ = self.hbos_scores
                 self._process_decision_scores()
+                self.is_fitted_ = True
             elif self.version == 2:
                 start_time_calc = time.time()
                 self.calc_hbos_score_with_normalize()
                 self.decision_scores_ = self.hbos_scores
                 self._process_decision_scores()
+                self.is_fitted_ = True
 
             end_time_calc = time.time()
             end_time_total = time.time()
@@ -129,11 +133,13 @@ class HBOSPYOD(BaseDetector):
                 self.hbos_scores = self.calc_hbos_scores(self.samples, self.features, self.bin_id_array)
                 self.decision_scores_ = self.hbos_scores
                 self._process_decision_scores()
+                self.is_fitted_ = True
             elif self.version == 2:
                 start_time_calc = time.time()
                 self.calc_hbos_score_with_normalize()
                 self.decision_scores_ = self.hbos_scores
                 self._process_decision_scores()
+                self.is_fitted_ = True
 
             end_time_calc = time.time()
             end_time_total = time.time()
@@ -480,6 +486,7 @@ class HBOSPYOD(BaseDetector):
             self.hbos_scores.append(score)
 
     def decision_function(self, X):
+        check_is_fitted(self, ['is_fitted_'])
         X = check_array(X)
         samples = len(X)
         features = X.shape[1]
