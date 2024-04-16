@@ -1,4 +1,3 @@
-
 # -*- coding: utf-8 -*-
 """Example of using Histogram- based outlier detection (HBOS) for
 outlier detection
@@ -12,14 +11,13 @@ from __future__ import print_function
 import os
 import sys
 
-import numpy as np
-
 # temporary solution for relative imports in case pyod is not installed
 # if pyod is installed, no need to use the following line
 sys.path.append(
     os.path.abspath(os.path.join(os.path.dirname("__file__"), '..')))
 
-from pyod.models.hbos  import HBOS
+from pyod.models.hbospyod import HBOSPYOD
+from pyod.models.hbos import HBOS
 from pyod.utils.data import generate_data
 from pyod.utils.data import evaluate_print
 from pyod.utils.example import visualize
@@ -37,25 +35,19 @@ if __name__ == "__main__":
                       contamination=contamination,
                       random_state=42)
 
-    scores = [0, 0, 0, 0, 0, 0, 0, 1, 2, 4, 5, 6, 1, 1, 1, 9, 2, 2, 2, 2, 10, 10, 110, 0, 1, 1]
-    scores= np.array(scores)
-    scores.reshape(-1,1)
-    X_test = X_train
-    y_test = y_train
     # train HBOS detector
-    clf_name = 'HBOSPYOD'
-    clf = HBOS()
-    clf.fit(scores)
-
-
+    clf_name = 'HBOS'
+    clf = HBOSPYOD()
+    clf2=HBOS()
+    clf.fit(X_train)
 
     # get the prediction labels and outlier scores of the training data
-    '''y_train_pred = clf.labels_  # binary labels (0: inliers, 1: outliers)
+    y_train_pred = clf.labels_  # binary labels (0: inliers, 1: outliers)
     y_train_scores = clf.decision_scores_  # raw outlier scores
 
     # get the prediction on the test data
-    y_test_pred =   y_train_pred  # outlier labels (0 or 1)
-    y_test_scores = y_train_scores  # outlier scores
+    y_test_pred = clf.predict(X_test)  # outlier labels (0 or 1)
+    y_test_scores = clf.decision_function(X_test)  # outlier scores
 
     # evaluate and print the results
     print("\nOn Training Data:")
@@ -65,4 +57,4 @@ if __name__ == "__main__":
 
     # visualize the results
     visualize(clf_name, X_train, y_train, X_test, y_test, y_train_pred,
-             y_test_pred, show_figure=True, save_figure=False)'''
+              y_test_pred, show_figure=True, save_figure=False)
