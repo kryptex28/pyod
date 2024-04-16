@@ -8,9 +8,8 @@ from .base import BaseDetector
 
 
 class HBOSPYOD(BaseDetector):
-    def __init__(self, mode="dynamic", n_bins="auto", adjust=False, save_scores=False, log_scale=True, ranked=True,
-                 version=1,
-                 alpha=0.1, tol=0.5, contamination=0.1):
+    def __init__(self, mode="static", n_bins="auto", adjust=True, save_scores=False, log_scale=True, ranked=True,
+                 version=1, alpha=0.1, tol=0.5, contamination=0.1):
         super(HBOSPYOD, self).__init__(contamination=contamination)
         self.same_score_same_rank = False
         self.version = version
@@ -24,11 +23,9 @@ class HBOSPYOD(BaseDetector):
         self.tol = tol
         self.samples_per_bin = "floor"  # ceil / floor
 
-        # histogram
         self.histogram_array = []
         self.bin_width_array = []
         self.bin_edges_array = []
-
         self.bin_id_array = []
         self.max_values_per_feature = []
         self.n_bins_array = []
@@ -77,7 +74,7 @@ class HBOSPYOD(BaseDetector):
             self.create_static_histogram(X)
             end_time_fit = time.time()
             start_time_digit = time.time()
-            self.bin_id_array = self.digitize(X)
+            self.digitize(X)
             end_time_digit = time.time()
             start_time_getscores = time.time()
 
@@ -94,12 +91,12 @@ class HBOSPYOD(BaseDetector):
                 start_time_calc = time.time()
                 self.normalize_scores()
                 self.hbos_scores = self.calc_hbos_scores(self.samples, self.features, self.bin_id_array)
-                self.decision_scores_ = np.array(self.hbos_scores)
+                self.decision_scores_ = self.hbos_scores
                 self._process_decision_scores()
             elif self.version == 2:
                 start_time_calc = time.time()
                 self.calc_hbos_score_with_normalize()
-                self.decision_scores_ = np.array(self.hbos_scores)
+                self.decision_scores_ = self.hbos_scores
                 self._process_decision_scores()
 
             end_time_calc = time.time()
@@ -120,7 +117,7 @@ class HBOSPYOD(BaseDetector):
             self.create_dynamic_histogram(X)
             end_time_fit = time.time()
             start_time_digit = time.time()
-            self.bin_id_array = self.digitize(X)
+            self.digitize(X)
             end_time_digit = time.time()
             start_time_getscores = time.time()
             self.get_bin_scores()
@@ -130,12 +127,12 @@ class HBOSPYOD(BaseDetector):
                 start_time_calc = time.time()
                 self.normalize_scores()
                 self.hbos_scores = self.calc_hbos_scores(self.samples, self.features, self.bin_id_array)
-                self.decision_scores_ = np.array(self.hbos_scores)
+                self.decision_scores_ = self.hbos_scores
                 self._process_decision_scores()
             elif self.version == 2:
                 start_time_calc = time.time()
                 self.calc_hbos_score_with_normalize()
-                self.decision_scores_ = np.array(self.hbos_scores)
+                self.decision_scores_ = self.hbos_scores
                 self._process_decision_scores()
 
             end_time_calc = time.time()
@@ -151,14 +148,12 @@ class HBOSPYOD(BaseDetector):
             print(end_time_total - start_time_total, "total", "\n")
 
     def digitize(self, X):
-        bin_id_array = []
         for i in range(self.features):
             binids = np.digitize(X[:, i], self.bin_edges_array[i], right=False)
             for j in range(len(binids)):
                 if binids[j] > self.n_bins_array[i]:
                     binids[j] = binids[j] - 1
-            bin_id_array.append(binids)
-        return bin_id_array
+            self.bin_id_array.append(binids)
 
     def create_static_histogram(self, X):
         for i in range(self.features):
@@ -220,7 +215,7 @@ class HBOSPYOD(BaseDetector):
                 bin_edges.append(edge)
             bin_edges.append(binlast[-1])
 
-            # falls letztes bin länge 0, verschmelzen mit bin[-1], Problem unendlich dichte da breite = 0
+            # falls letztes bin länge 0, verschmelzen mit bin[-2], Problem unendlich dichte da breite = 0
             if binlast[-1] - binfirst[-1] == 0:
                 counters[-2] = counters[-2] + counters[-1]
                 counters = np.delete(counters, -1)
@@ -232,15 +227,12 @@ class HBOSPYOD(BaseDetector):
             self.histogram_array.append(counters)
             self.bin_edges_array.append(bin_edges)
             for k in range(len(counters) - 1):
-                bin_width = binfirst[k + 1] - binfirst[
-                    k]  # bin start bis neue bin start, Problem da sonst löcher im histogram
+                # # bin start bis neue bin start, Problem da sonst löcher im histogram
+                bin_width = binfirst[k + 1] - binfirst[k]
                 bin_widths.append(bin_width)
             binwidth = binlast[-1] - binfirst[-1]
             bin_widths.append(binwidth)
             self.bin_width_array.append(bin_widths)
-
-    # def predict(self):
-    #    return self.hbos_scores
 
     def set_adjust(self, adjust):
         self.adjust = adjust
@@ -248,11 +240,17 @@ class HBOSPYOD(BaseDetector):
     def set_version(self, version):
         self.version = version
 
+    def set_ranked(self,ranked):
+        self.ranked = ranked
+
     def set_save_scores(self, save_scores):
         self.save_scores = save_scores
 
     def set_is_nominal(self, is_nominal):
         self.is_nominal = is_nominal
+
+    def set_n_bins(self, n_bins):
+        self.n_bins = n_bins
 
     def get_bin_scores(self):
 
@@ -333,7 +331,6 @@ class HBOSPYOD(BaseDetector):
                     tmp = tmp * 1 / maxscore
                     tmp = 1 / tmp
                     scores_i[j] = tmp
-
             # print(len(np.unique(scores_i)), " unique scores")
             normalized_scores.append(scores_i)
         self.score_array = normalized_scores
@@ -447,7 +444,7 @@ class HBOSPYOD(BaseDetector):
             if self.save_scores:
                 self.all_scores_per_sample_dict[i] = scores_per_sample
             hbos_scores.append(score)
-        return hbos_scores
+        return np.array(hbos_scores)
 
     def calc_hbos_score_with_normalize(self):
         if self.ranked:
@@ -528,6 +525,6 @@ class HBOSPYOD(BaseDetector):
                     else:
                         binids[j] = self.highest_score_id[i]
             bin_id_array.append(binids)
-        hbos_scores = np.array(self.calc_hbos_scores(samples, features, bin_id_array))
+        hbos_scores = self.calc_hbos_scores(samples, features, bin_id_array)
 
         return hbos_scores
