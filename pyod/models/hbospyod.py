@@ -4,13 +4,13 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.utils import check_array
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
-
 from .base import BaseDetector
+from ..utils import get_optimal_n_bins
 
 
 class HBOSPYOD(BaseDetector):
-    def __init__(self, mode="static", n_bins="auto", adjust=True, save_scores=False, log_scale=True, ranked=True,
-                  alpha=0.1, tol=0.5, contamination=0.1):
+    def __init__(self, mode="static", n_bins="auto", adjust=False, save_scores=True, log_scale=True, ranked=False,
+                 tol=0.5, contamination=0.1):
         super(HBOSPYOD, self).__init__(contamination=contamination)
 
         self.same_score_same_rank = False
@@ -20,7 +20,6 @@ class HBOSPYOD(BaseDetector):
         self.save_scores = save_scores
         self.mode = mode
         self.n_bins = n_bins
-        self.alpha = alpha
         self.tol = tol
         self.samples_per_bin = "floor"  # ceil / floor
 
@@ -91,18 +90,17 @@ class HBOSPYOD(BaseDetector):
             start_time_calc = time.time()
             self.normalize_scores()
             self.hbos_scores = self.calc_hbos_scores(self.samples, self.features, self.bin_id_array)
+            end_time_calc = time.time()
             self.decision_scores_ = self.hbos_scores
             self._process_decision_scores()
             self.is_fitted_ = True
 
-
-            end_time_calc = time.time()
             end_time_total = time.time()
             execution_timefit = end_time_fit - start_time_fit
             execution_digit = end_time_digit - start_time_digit
             execution_get_scores = end_time_getscores - start_time_getscores
             execution_calc_scores = end_time_calc - start_time_calc
-            print(execution_timefit, "execution time fit", "\n")
+            print(execution_timefit, "execution time create hist", "\n")
             print(execution_digit, "execution time digit", "\n")
             print(execution_get_scores, "execution time get_scores", "\n")
             print(execution_calc_scores, "execution time calc_scores", "\n")
@@ -120,15 +118,14 @@ class HBOSPYOD(BaseDetector):
             self.get_bin_scores()
             end_time_getscores = time.time()
 
-
             start_time_calc = time.time()
             self.normalize_scores()
             self.hbos_scores = self.calc_hbos_scores(self.samples, self.features, self.bin_id_array)
+            end_time_calc = time.time()
             self.decision_scores_ = self.hbos_scores
             self._process_decision_scores()
             self.is_fitted_ = True
 
-            end_time_calc = time.time()
             end_time_total = time.time()
             execution_timefit = end_time_fit - start_time_fit
             execution_digit = end_time_digit - start_time_digit
@@ -150,6 +147,7 @@ class HBOSPYOD(BaseDetector):
 
     def create_static_histogram(self, X):
         for i in range(self.features):
+            # self.n_bins=get_optimal_n_bins(X[:, i])
             hist, bin_edges = np.histogram(X[:, i], bins=self.n_bins, density=False)
             bin_width = bin_edges[1] - bin_edges[0]
             self.n_bins_array.append(len(hist))
@@ -233,7 +231,7 @@ class HBOSPYOD(BaseDetector):
     def set_version(self, version):
         self.version = version
 
-    def set_ranked(self,ranked):
+    def set_ranked(self, ranked):
         self.ranked = ranked
 
     def set_save_scores(self, save_scores):
@@ -359,8 +357,8 @@ class HBOSPYOD(BaseDetector):
             ranked_scores.append(ranks)
         self.score_array = ranked_scores'''
 
-    def rank_scores_same_score_same_rank(
-            self):  # rank scores the same scores get the same rank all 0 are rank 1 ... etc
+    # rank scores the same scores get the same rank all 0 are rank 1 ... etc
+    def rank_scores_same_score_same_rank(self):
         ranked_scores = []
         for i in range(self.features):
             scores_i = self.score_array[i]
@@ -376,14 +374,14 @@ class HBOSPYOD(BaseDetector):
             ranked_scores.append(new_ranks)
         self.score_array = ranked_scores
 
-    def rank_scores_no_empty_bins(
-            self):  # rank scores same scores different ranks, if bin is empty (score 0) we do not include it
+    # rank scores same scores different ranks, if bin is empty (score 0) we do not include it
+    def rank_scores_no_empty_bins(self):
         ranked_scores = []
         for i in range(self.features):
             scores_i = self.score_array[i]
             sorted_indices = np.argsort(scores_i)
             # sorted_indices = sorted(range(len(scores_i)), key=lambda i: scores_i[i])
-            ranks = np.zeros(len(scores_i), dtype=int)
+            ranks = np.zeros(len(scores_i))
             counter = 1
             for j in range(len(scores_i)):
                 tmpid = sorted_indices[j]
@@ -399,12 +397,14 @@ class HBOSPYOD(BaseDetector):
     def calc_hbos_scores(self, samples, features, bin_id_array):
         for a in range(features):
             self.highest_score_id.append(np.argmax(self.score_array[a]) + 1)
-        hbos_scores = []
+        hbos_scores = np.zeros(samples)
+        #hbos_scores=[]
         if self.ranked:
             if self.same_score_same_rank:
                 self.rank_scores_same_score_same_rank()
             else:
                 self.rank_scores_no_empty_bins()
+
         for i in range(samples):
             if self.log_scale:
                 score = 0
@@ -435,9 +435,11 @@ class HBOSPYOD(BaseDetector):
                 if self.save_scores:
                     scores_per_sample.append(tmpscore)
             if self.save_scores:
-                self.all_scores_per_sample_dict[i] = scores_per_sample
-            hbos_scores.append(score)
-        return np.array(hbos_scores)
+                #self.all_scores_per_sample_dict[i] = scores_per_sample
+                self.all_scores_per_sample.append(scores_per_sample)
+            hbos_scores[i] = score
+            #hbos_scores.append(score)
+        return hbos_scores
 
     '''def calc_hbos_score_with_normalize(self):
         if self.ranked:
@@ -522,3 +524,28 @@ class HBOSPYOD(BaseDetector):
         hbos_scores = self.calc_hbos_scores(samples, features, bin_id_array)
 
         return hbos_scores
+
+    '''def calc_hbos_scores2(self, samples, features, bin_id_array):     #  TEST TEST TEST TEST
+        for a in range(features):
+            self.highest_score_id.append(np.argmax(self.score_array[a]) + 1)
+        hbos_scores = []
+        if self.ranked:
+            if self.same_score_same_rank:
+                self.rank_scores_same_score_same_rank()
+            else:
+                self.rank_scores_no_empty_bins()
+        if self.log_scale:
+            for c in range(samples):
+                hbos_scores.append(
+                    np.sum([self.score_array[b][bin_id_array[b][c] - 1] for b in range(features)], axis=0))
+
+        elif self.ranked:
+            for c in range(samples):
+                hbos_scores.append(
+                    np.sum([self.score_array[b][bin_id_array[b][c] - 1] for b in range(features)], axis=0))
+                return hbos_scores
+        else:
+            for c in range(samples):
+                hbos_scores.append(
+                    np.sum([self.score_array[b][bin_id_array[b][c] - 1] for b in range(features)], axis=0))
+                return hbos_scores'''
