@@ -1,5 +1,6 @@
 import math
 import time
+
 from sklearn.utils import check_array
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
@@ -11,13 +12,14 @@ class HBOSPYOD(BaseDetector):
     """The HBOS algorithm calculates the outlier score based on
     univariate histograms and the normalized density of their bins.
     For every feature of the dataset (each column) a separate histogram is calculated
+
     There are two modes:
     In the static mode all bins of a histogram have the same bin width and
     the value of the bin is the number of samples which fall into the range
     of the bin.
     In the dynamic mode, the number of samples per bin is the same,
     so there are always n samples in each bin with the values being the same
-    (with a few minor exceptions) and the bin width can vary.
+    (with a few minor exceptions) here the important thing is the bin width.
     See :cite:`goldstein2012histogram` for details.
 
     There are different versions to calcualte the number of bins:
@@ -28,8 +30,13 @@ class HBOSPYOD(BaseDetector):
       (:cite:`birge2006many`).
 
     A ranked mode is also supported, in which the histogram bins get sorted by density.
-    Rank of the bins => new score
+    Then the rank of the bin is its new score, the anomalie score is calculated with
+    the new score.
     Two different ranking methods are available.
+
+    It's also possible to see how much each feature contributed to the anomalie score,
+    or which feature is responsible for a very high score e.g.
+    See: get_explainability_scores method.
 
     Parameters
     ----------
@@ -170,7 +177,7 @@ class HBOSPYOD(BaseDetector):
         self : object
             Fitted estimator.
         """
-
+        start_time_total = time.time()
         self.hist_ = []
         self.bin_edges_array_ = []
         if self.ranked:
@@ -186,34 +193,46 @@ class HBOSPYOD(BaseDetector):
         if self.n_bins == "auto":
             self.n_bins = round(math.sqrt(self.n_samples_))
 
-        # Create histograms for every dimension
         if self.mode == "static":
             print("static mode")
+            # Create histograms for every dimension
             self.create_static_histogram(X)
+
+            # get bin ids
             self.digitize(X)
 
-            # calculate raw scores for every bin
+            # calculate raw density scores for every bin
             if self.smoothen:
                 self.get_bin_density_smooth()  # (score[-i] + score[i] + score[i+1]) / 3
             else:
                 self.get_bin_density()
 
-            # calculate the hbos scores for every sample
+            # normalize density scores and calculate the anomalie scores
             self.normalize_density()
             self.decision_scores_ = self.calc_hbos_scores(self.n_samples_, self.n_features_, self.bin_id_array_)
             self._process_decision_scores()
-
+            end_time_total = time.time()
+            print("Time taken to, ", end_time_total - start_time_total)
             return self
 
         elif self.mode == "dynamic":
             print("dynamic mode")
+
+            # Create histograms for every dimension
             self.create_dynamic_histogram(X)
+
+            # get bin ids
             self.digitize(X)
+
+            # calculate raw density scores for every bin
             self.get_bin_density()
+
+            # normalize density scores and calculate the anomalie scores
             self.normalize_density()
             self.decision_scores_ = self.calc_hbos_scores(self.n_samples_, self.n_features_, self.bin_id_array_)
             self._process_decision_scores()
-
+            end_time_total = time.time()
+            print("Time taken to, ", end_time_total - start_time_total)
             return self
 
     def digitize(self, X):
@@ -270,7 +289,7 @@ class HBOSPYOD(BaseDetector):
             samples_per_bin = self.samples_per_bin
         print(samples_per_bin, "samples per bin")
         for i in range(self.n_features_):
-
+            last=None
             binfirst = []
             binlast = []
             counters = []
@@ -305,11 +324,16 @@ class HBOSPYOD(BaseDetector):
                     counter = 0
                 last = num
 
+            # Get bin edges, use the next bins left edge as right edge, otherwise
+            # there may be holes in the histogram
             for edge in binfirst:
                 bin_edges.append(edge)
+
+            # last bin is an exception, here the biggest value in the bin is the right edge
             bin_edges.append(binlast[-1])
 
-            # falls letztes bin länge 0, verschmelzen mit bin[-2], Problem unendlich dichte da breite = 0
+            # if last bin got bin width 0, merge it with second last bin
+            # otherwise it would have infinite density
             if binlast[-1] - binfirst[-1] == 0:
                 counters[-2] = counters[-2] + counters[-1]
                 counters = np.delete(counters, -1)
@@ -321,9 +345,12 @@ class HBOSPYOD(BaseDetector):
             self.hist_.append(counters)
             self.bin_edges_array_.append(bin_edges)
             for k in range(len(counters) - 1):
-                # # bin start bis neue bin start, Problem da sonst löcher im histogram
+
+                # calculate bin widths
                 bin_width = binfirst[k + 1] - binfirst[k]
                 bin_widths.append(bin_width)
+
+            # calculate bin width of last bin
             binwidth = binlast[-1] - binfirst[-1]
             bin_widths.append(binwidth)
             self.bin_width_array_.append(bin_widths)
@@ -351,8 +378,9 @@ class HBOSPYOD(BaseDetector):
             for j in range(self.n_bins_array_[i] - 1):
                 if self.mode == "dynamic":
                     binwidth = dynlist[j + 1]
-                score = (hist_[j + 1]) / (
-                        binwidth * self.n_samples_ / (abs(max_)))  # Bin Höhe / (Bin Breite / höchste bin im Histogramm)
+
+                # bin height / (bin width / biggest sample in the feature)
+                score = (hist_[j + 1]) / (binwidth * self.n_samples_ / (abs(max_)))
                 scores_bins.append(score)
                 if score > max_score:
                     max_score = score
@@ -398,8 +426,9 @@ class HBOSPYOD(BaseDetector):
                 for j in range(self.n_bins_array_[i] - 1):
                     if self.mode == "dynamic":
                         binwidth = dynlist[j]
-                    score = (hist_[j + 1]) / (
-                            binwidth * 1 / (abs(max_)))  # Bin Höhe / (Bin Breite / höchste win im Histogramm)
+
+                    # bin height / (bin width / biggest sample in the feature)
+                    score = (hist_[j + 1]) / (binwidth * 1 / (abs(max_)))
                     scores_.append(score)
                     if score > max_score:
                         max_score = score
@@ -426,7 +455,6 @@ class HBOSPYOD(BaseDetector):
             normalized_scores.append(scores_i)
         self.score_array_ = normalized_scores
 
-    # rank scores the same scores get the same rank all 0 are rank 1 ... etc
     def rank_scores_same_score_same_rank(self):
         """The internal function for the ranked mode.
         The bins in each histogram are sorted then ranked,
@@ -436,19 +464,18 @@ class HBOSPYOD(BaseDetector):
         ranked_scores = []
         for i in range(self.n_features_):
             scores_i = self.score_array_[i]
-            sorted_scores = sorted(scores_i)  # scores werden sortiert
+            # sort scores
+            sorted_scores = sorted(scores_i)
             score_rank_dict = {}
             current_rank = 1
             for score in sorted_scores:
                 if score not in score_rank_dict:
-                    score_rank_dict[score] = current_rank  # wenn score nicht in dict wird dict hinzugefügt
+                    score_rank_dict[score] = current_rank
                     current_rank += 1
-            new_ranks = np.array([score_rank_dict[score] for score in
-                                  scores_i])  # für jeden score in score_i wird im dict geschaut welche value
+            new_ranks = np.array([score_rank_dict[score] for score in scores_i])
             ranked_scores.append(new_ranks)
         self.score_array_ = ranked_scores
 
-    # rank scores same scores different ranks, if bin is empty (score 0) we do not include it
     def rank_scores_no_empty_bins(self):
         """The internal function for the ranked mode.
         The bins in each histogram are sorted then ranked,
@@ -588,9 +615,11 @@ class HBOSPYOD(BaseDetector):
                     # assign it the id of bin 1
                     if distance <= bin_width_left * self.tol:
                         binids[j] = 1
+
                     # else assign it the ID of the bin with the highest score
                     else:
                         binids[j] = self.highest_score_id_[i]
+
                 # if the sample does not belong to any bin
                 # binids[j] is bigger than number of bins in that histogram: it is too big for every bin
                 elif binids[j] > self.n_bins_array_[i]:

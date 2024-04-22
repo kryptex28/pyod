@@ -13,6 +13,7 @@ from sklearn.utils import check_array
 from sklearn.utils.validation import check_is_fitted
 
 from .base import BaseDetector
+
 from ..utils.utility import check_parameter
 from ..utils.utility import get_optimal_n_bins
 from ..utils.utility import invert_order
