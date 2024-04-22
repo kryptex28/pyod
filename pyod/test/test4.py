@@ -6,6 +6,7 @@ from scipy.io import arff
 from sklearn.preprocessing import LabelEncoder
 from matplotlib import pyplot as plt
 from pyod.models.hbospyod import HBOSPYOD
+from pyod.models.hbos import HBOS
 
 import pandas as pd
 from scipy.io import loadmat
@@ -53,7 +54,7 @@ if __name__ == "__main__":
     clf.set_mode("static")
     clf.fit(data)
 
-    hbos_scores = clf.hbos_scores
+    hbos_scores = clf.decision_scores_
 
     hbos_orig['hbos'] = hbos_scores
     hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:1000]
@@ -75,7 +76,7 @@ if __name__ == "__main__":
     # print("TEST TEST TEST,", res)
     ans = clf.predict(data)
     # print("TEST",ans[:20])
-    hbos_scores2 = clf2.hbos_scores
+    hbos_scores2 = clf2.decision_scores_
     hbos_orig2 = orig.copy()
     hbos_orig2['hbos'] = hbos_scores2
     hbos_top1000_data2 = hbos_orig2.sort_values(by=['hbos'], ascending=False)[:1000]
@@ -101,7 +102,7 @@ if __name__ == "__main__":
     print("wert zähler2",wert_zähler2)
     print("wert zähler3",wert_zähler3)'''
 
-    clf3 = HBOSPYOD()
+    '''clf3 = HBOSPYOD()
     clf.set_mode("dynamic")
 
     mu = 500  # Mittelwert
@@ -114,4 +115,4 @@ if __name__ == "__main__":
     # print(clf3.histogram_array)
     # print(clf3.predict_proba(scaled_values))
     # my_dict= clf2.all_scores_per_sample_dict#
-    # print(my_dict[0])
+    # print(my_dict[0])'''

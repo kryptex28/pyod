@@ -668,6 +668,9 @@ class HBOSPYOD(BaseDetector):
     def set_smooth(self, smoothen):
         self.smoothen = smoothen
 
+    def set_log_scale(self, log_scale):
+        self.log_scale = log_scale
+
     def set_same_score_same_rank(self, same_score_same_rank):
         self.same_score_same_rank = same_score_same_rank
 

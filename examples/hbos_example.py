@@ -38,7 +38,6 @@ if __name__ == "__main__":
     # train HBOS detector
     clf_name = 'HBOS'
     clf = HBOSPYOD()
-    clf2=HBOS()
     clf.fit(X_train)
 
     # get the prediction labels and outlier scores of the training data
