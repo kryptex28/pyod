@@ -1,5 +1,7 @@
 import time
 from collections import Counter
+import coverage
+
 
 from numpy import genfromtxt
 from scipy.io import arff
@@ -50,10 +52,13 @@ if __name__ == "__main__":
     # clf.set_save_scores(True)
     # firstrow = hbos_orig["V1"]
     # firstrow = np.array(firstrow)
+
     clf.set_mode("static")
     clf.fit(data)
 
-    hbos_scores = clf.hbos_scores
+
+
+    hbos_scores = clf.decision_scores_
 
     hbos_orig['hbos'] = hbos_scores
     hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:1000]
@@ -75,7 +80,7 @@ if __name__ == "__main__":
     # print("TEST TEST TEST,", res)
     ans = clf.predict(data)
     # print("TEST",ans[:20])
-    hbos_scores2 = clf2.hbos_scores
+    hbos_scores2 = clf2.decision_scores_
     hbos_orig2 = orig.copy()
     hbos_orig2['hbos'] = hbos_scores2
     hbos_top1000_data2 = hbos_orig2.sort_values(by=['hbos'], ascending=False)[:1000]

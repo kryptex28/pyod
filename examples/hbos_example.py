@@ -58,3 +58,7 @@ if __name__ == "__main__":
     # visualize the results
     visualize(clf_name, X_train, y_train, X_test, y_test, y_train_pred,
               y_test_pred, show_figure=True, save_figure=False)
+
+    print(clf.predict_proba(X_train))
+
+    print(clf.get_explainability_scores(0))

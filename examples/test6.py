@@ -54,12 +54,12 @@ while i < 1006:
  clf5.fit(data)
  clf6.fit(data)
 
- hbos_scores = clf.hbos_scores
- hbos_scores2 = clf2.hbos_scores
- hbos_scores3 = clf3.hbos_scores
- hbos_scores4 = clf4.hbos_scores
- hbos_scores5 = clf5.hbos_scores
- hbos_scores6 = clf6.hbos_scores
+ hbos_scores = clf.decision_scores_
+ hbos_scores2 = clf2.decision_scores_
+ hbos_scores3 = clf3.decision_scores_
+ hbos_scores4 = clf4.decision_scores_
+ hbos_scores5 = clf5.decision_scores_
+ hbos_scores6 = clf6.decision_scores_
 
  hbos_orig['hbos'] = hbos_scores
  hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:1000]

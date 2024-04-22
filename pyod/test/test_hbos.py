@@ -19,7 +19,7 @@ from sklearn.metrics import roc_auc_score
 # if pyod is installed, no need to use the following line
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from pyod.models.hbos import HBOS
+from pyod.models.hbospyod import HBOSPYOD
 from pyod.utils.data import generate_data
 
 
@@ -33,7 +33,7 @@ class TestHBOS(unittest.TestCase):
             n_train=self.n_train, n_test=self.n_test,
             contamination=self.contamination, random_state=42)
 
-        self.clf = HBOS(contamination=self.contamination)
+        self.clf = HBOSPYOD(contamination=self.contamination)
         self.clf.fit(self.X_train)
 
     def test_parameters(self):
@@ -49,8 +49,8 @@ class TestHBOS(unittest.TestCase):
                 self.clf._sigma is not None)
         assert (hasattr(self.clf, 'hist_') and
                 self.clf.hist_ is not None)
-        assert (hasattr(self.clf, 'bin_edges_') and
-                self.clf.bin_edges_ is not None)
+        assert (hasattr(self.clf, 'bin_edges_array_') and
+                self.clf.bin_edges_array_ is not None)
 
     def test_train_scores(self):
         assert_equal(len(self.clf.decision_scores_), self.X_train.shape[0])
@@ -143,7 +143,7 @@ class TestAutoHBOS(unittest.TestCase):
             n_train=self.n_train, n_test=self.n_test,
             contamination=self.contamination, random_state=42)
 
-        self.clf = HBOS(contamination=self.contamination, n_bins="auto")
+        self.clf = HBOSPYOD(contamination=self.contamination, n_bins="calc")
         self.clf.fit(self.X_train)
 
     def test_parameters(self):
@@ -159,8 +159,8 @@ class TestAutoHBOS(unittest.TestCase):
                 self.clf._sigma is not None)
         assert (hasattr(self.clf, 'hist_') and
                 self.clf.hist_ is not None)
-        assert (hasattr(self.clf, 'bin_edges_') and
-                self.clf.bin_edges_ is not None)
+        assert (hasattr(self.clf, 'bin_edges_array_') and
+                self.clf.bin_edges_array_ is not None)
 
     def test_train_scores(self):
         assert_equal(len(self.clf.decision_scores_), self.X_train.shape[0])
