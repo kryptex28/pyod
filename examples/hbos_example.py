@@ -84,7 +84,7 @@ if __name__ == "__main__":
     print(roc_auc_score(y_test, y_test_scores2),"roc_auc_score2")
     clf3=HBOSPYOD()
 
-    #print(clf3.fit_predict_score( X_test, y_test, scoring='prc_n_score')," prc_n_score")
+    print(clf3.fit_predict_score( X_test, y_test, scoring='prc_n_score')," prc_n_score")
     clf3.fit(X_train)
     print(clf3.decision_scores_)
     print(clf3.decision_function(X_train))
