@@ -24,18 +24,19 @@ class HBOS(BaseDetector):
 
     There are two modes:
     In the static mode all bins of a histogram have the same bin width and
-    the height of the bin is the number of samples which fall into the range
+    the value of the bin is the number of samples which fall into the range
     of the bin.
-    In the dynamic mode, the number of samples per bin is fixed,
-    so there are always n samples in each bin (with a few minor exceptions)
-    here the important thing which influences the density score is the bin width.
+    In the dynamic mode, the number of samples per bin is the same,
+    so there are always n samples in each bin with the values being the same
+    (with a few minor exceptions) here the important thing is the bin width.
     See :cite:`goldstein2012histogram` for details.
 
-    There are different versions to calculate the number of bins:
-    - Static number of bins: uses a fixed number of bins for all features.
+    There are different versions to calcualte the number of bins:
+    - Static number of bins: uses a static number of bins for all features.
     - Square root: n_bins is set to the square root of the number of samples
     - Birge-Rozenblac method: every feature uses a number of bins deemed to
-      be optimal according to the Birge-Rozenblac method (:cite:`birge2006many`).
+      be optimal according to the Birge-Rozenblac method
+      (:cite:`birge2006many`).
 
     A ranked mode is also supported, in which the histogram bins get sorted by density.
     Then the rank of the bin is its new score, the anomalie score is calculated with
@@ -43,7 +44,7 @@ class HBOS(BaseDetector):
     Two different ranking methods are available.
 
     It's also possible to see how much each feature contributed to the anomalie score,
-    or e.g. which feature is responsible for a very high score.
+    or which feature is responsible for a very high score e.g.
     See: get_explainability_scores method.
 
     Parameters
@@ -97,10 +98,10 @@ class HBOS(BaseDetector):
     Attributes
     ----------
     bin_edges_array_ : numpy array of shape (n_bins + 1, n_features )
-        The edges of all bins.
+        The edges of the bins.
 
     hist_ : numpy array of shape (n_bins, n_features)
-        The number of samples in each bin.
+        The number of samples in each bin
 
     bin_width_array_: array of shape (n_bins, n_features)
         The bin widths of the bins, needed to calculate the density.
@@ -159,16 +160,6 @@ class HBOS(BaseDetector):
         self.samples_per_bin = samples_per_bin
         self.tol = tol
 
-        self.decision_scores_ = []
-        self.bin_width_array_ = []
-        self.bin_id_array_ = []
-        self.max_values_per_feature_ = []
-        self.n_bins_array_ = []
-        self.highest_score_id_ = []
-        self.highest_score_ = []
-        self.score_array_ = []
-        self.explainability_scores_ = []
-
     def fit(self, X, y=None):
         """Fit detector. y is ignored in unsupervised methods.
 
@@ -187,6 +178,16 @@ class HBOS(BaseDetector):
         """
         self.hist_ = []
         self.bin_edges_array_ = []
+        self.decision_scores_ = []
+        self.bin_width_array_ = []
+        self.bin_id_array_ = []
+        self.max_values_per_feature_ = []
+        self.n_bins_array_ = []
+        self.highest_score_id_ = []
+        self.highest_score_ = []
+        self.score_array_ = []
+        self.explainability_scores_ = []
+
         if self.ranked:
             self.log_scale = False
 
@@ -220,7 +221,6 @@ class HBOS(BaseDetector):
             return self
 
         elif self.mode == "dynamic":
-
             # Create histograms for every dimension
             self.create_dynamic_histogram(X)
 
