@@ -151,16 +151,6 @@ class HBOSPYOD(BaseDetector):
         self.samples_per_bin = samples_per_bin
         self.tol = tol
 
-        self.decision_scores_ = []
-        self.bin_width_array_ = []
-        self.bin_id_array_ = []
-        self.max_values_per_feature_ = []
-        self.n_bins_array_ = []
-        self.highest_score_id_ = []
-        self.highest_score_ = []
-        self.score_array_ = []
-        self.explainability_scores_ = []
-
     def fit(self, X, y=None):
         """Fit detector. y is ignored in unsupervised methods.
 
@@ -180,6 +170,16 @@ class HBOSPYOD(BaseDetector):
         start_time_total = time.time()
         self.hist_ = []
         self.bin_edges_array_ = []
+        self.decision_scores_ = []
+        self.bin_width_array_ = []
+        self.bin_id_array_ = []
+        self.max_values_per_feature_ = []
+        self.n_bins_array_ = []
+        self.highest_score_id_ = []
+        self.highest_score_ = []
+        self.score_array_ = []
+        self.explainability_scores_ = []
+
         if self.ranked:
             self.log_scale = False
 

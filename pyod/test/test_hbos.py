@@ -31,7 +31,7 @@ class TestStaticHBOS(unittest.TestCase):
         self.contamination = 0.1
         self.roc_floor = 0.8
         self.X_train, self.X_test, self.y_train, self.y_test = generate_data(
-            n_train=self.n_train, n_test=self.n_test,n_features=2,
+            n_train=self.n_train, n_test=self.n_test,
             contamination=self.contamination, random_state=42)
 
         self.clf = HBOSPYOD()
@@ -62,8 +62,9 @@ class TestStaticHBOS(unittest.TestCase):
         # check score shapes
         assert_equal(pred_scores.shape[0], self.X_test.shape[0])
 
+        score=roc_auc_score(self.y_test, pred_scores)
         # check performance
-        assert (roc_auc_score(self.y_test, pred_scores) >= self.roc_floor)
+        assert ( score>= self.roc_floor)
 
     def test_prediction_labels(self):
         pred_labels = self.clf.predict(self.X_test)
@@ -94,9 +95,9 @@ class TestStaticHBOS(unittest.TestCase):
 
     def test_fit_predict_score(self):
         self.clf.fit_predict_score(self.X_test, self.y_test)
-        self.clf.fit_predict_score(self.X_test, self.y_test,
+        score= self.clf.fit_predict_score(self.X_test, self.y_test,
                                    scoring='roc_auc_score')
-        self.clf.fit_predict_score(self.X_test, self.y_test,
+        score2=self.clf.fit_predict_score(self.X_test, self.y_test,
                                    scoring='prc_n_score')
         with assert_raises(NotImplementedError):
             self.clf.fit_predict_score(self.X_test, self.y_test,

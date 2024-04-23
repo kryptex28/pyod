@@ -21,6 +21,7 @@ from pyod.models.hbos import HBOS
 from pyod.utils.data import generate_data
 from pyod.utils.data import evaluate_print
 from pyod.utils.example import visualize
+from pyod.utils.utility import precision_n_scores
 
 
 if __name__ == "__main__":
@@ -79,8 +80,12 @@ if __name__ == "__main__":
     #visualize(clf_name2, X_train, y_train, X_test, y_test, y_train_pred2,
      #         y_test_pred2, show_figure=True, save_figure=False)
 
-    print(roc_auc_score(y_test, y_test_pred))
-    print(roc_auc_score(y_test, y_test_pred2))
+    print(roc_auc_score(y_test, y_test_scores),"roc_auc_score")
+    print(roc_auc_score(y_test, y_test_scores2),"roc_auc_score2")
     clf3=HBOSPYOD()
-    y=0
-    print(clf3.fit_predict_score( X_test, y_test, scoring='prc_n_score')," prc_n_score")
+
+    #print(clf3.fit_predict_score( X_test, y_test, scoring='prc_n_score')," prc_n_score")
+    clf3.fit(X_train)
+    print(clf3.decision_scores_)
+    print(clf3.decision_function(X_train))
+    print(precision_n_scores(y_test,y_test_scores))
