@@ -1,11 +1,18 @@
-import math
+# -*- coding: utf-8 -*-
+"""Histogram-based Outlier Detection (HBOS)
+"""
+# Author: David Schaetz <david.schaetz@googlemail.com>
+# License: BSD 2 clause
 
-from sklearn.utils import check_array
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
+from sklearn.utils import check_array
 from sklearn.utils.validation import check_is_fitted
-from .base import BaseDetector
-from ..utils import get_optimal_n_bins
 
+from .base import BaseDetector
+from ..utils.utility import get_optimal_n_bins
 
 class HBOS(BaseDetector):
     """The HBOS algorithm calculates the outlier score based on
