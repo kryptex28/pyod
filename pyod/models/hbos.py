@@ -201,7 +201,6 @@ class HBOS(BaseDetector):
             self.n_bins = round(math.sqrt(self.n_samples_))
 
         if self.mode == "static":
-            print("static mode")
             # Create histograms for every dimension
             self.create_static_histogram(X)
 
@@ -221,7 +220,6 @@ class HBOS(BaseDetector):
             return self
 
         elif self.mode == "dynamic":
-            print("dynamic mode")
 
             # Create histograms for every dimension
             self.create_dynamic_histogram(X)
@@ -290,7 +288,6 @@ class HBOS(BaseDetector):
             samples_per_bin = math.floor(self.n_samples_ / self.n_bins)
         else:
             samples_per_bin = self.samples_per_bin
-        print(samples_per_bin, "samples per bin")
         for i in range(self.n_features_):
             last = None
             binfirst = []
