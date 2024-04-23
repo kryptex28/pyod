@@ -699,7 +699,7 @@ class TestAutoHBOS(unittest.TestCase):
             n_train=self.n_train, n_test=self.n_test,
             contamination=self.contamination, random_state=42)
 
-        self.clf = HBOSPYOD(contamination=self.contamination, n_bins="auto")
+        self.clf = HBOSPYOD(contamination=self.contamination, n_bins="calc")
         self.clf.fit(self.X_train)
 
     def test_parameters(self):
