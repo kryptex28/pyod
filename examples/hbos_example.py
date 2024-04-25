@@ -41,6 +41,10 @@ if __name__ == "__main__":
     clf_name = 'HBOSPYOD'
     clf_name2= 'HBOS'
     clf = HBOSPYOD()
+    #clf.set_n_bins(10)
+    #clf.set_ranked(True)
+    clf.set_params(n_bins="auto", mode="dynamic",ranked=True)
+    #clf.set_smooth(True)
     clf.fit(X_train)
     clf2= HBOS()
     clf2.fit(X_train)
@@ -74,13 +78,13 @@ if __name__ == "__main__":
     print(clf2.decision_scores_,"clf2")
 
     # visualize the results
-    #visualize(clf_name, X_train, y_train, X_test, y_test, y_train_pred,
-     #         y_test_pred, show_figure=True, save_figure=False)
+    visualize(clf_name, X_train, y_train, X_test, y_test, y_train_pred,
+              y_test_pred, show_figure=True, save_figure=False)
 
     #visualize(clf_name2, X_train, y_train, X_test, y_test, y_train_pred2,
-     #         y_test_pred2, show_figure=True, save_figure=False)
+              #y_test_pred2, show_figure=True, save_figure=False)
 
-    print(roc_auc_score(y_test, y_test_scores),"roc_auc_score")
+    '''print(roc_auc_score(y_test, y_test_scores),"roc_auc_score")
     print(roc_auc_score(y_test, y_test_scores2),"roc_auc_score2")
     clf3=HBOSPYOD()
 
@@ -88,4 +92,4 @@ if __name__ == "__main__":
     clf3.fit(X_train)
     print(clf3.decision_scores_)
     print(clf3.decision_function(X_train))
-    print(precision_n_scores(y_test,y_test_scores))
+    print(precision_n_scores(y_test,y_test_scores))'''
