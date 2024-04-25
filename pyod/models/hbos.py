@@ -664,24 +664,3 @@ class HBOS(BaseDetector):
             return self.explainability_scores_
         else:
             return self.explainability_scores_[sampleid]
-
-    def set_smooth(self, smoothen):
-        self.smoothen = smoothen
-
-    def set_log_scale(self, log_scale):
-        self.log_scale = log_scale
-
-    def set_same_score_same_rank(self, same_score_same_rank):
-        self.same_score_same_rank = same_score_same_rank
-
-    def set_ranked(self, ranked):
-        self.ranked = ranked
-
-    def set_save_explainability_scores(self, save_scores):
-        self.save_explainability_scores = save_scores
-
-    def set_n_bins(self, n_bins):
-        self.n_bins = n_bins
-
-    def set_mode(self, mode):
-        self.mode = mode

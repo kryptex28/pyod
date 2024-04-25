@@ -143,8 +143,7 @@ class TestDynamicHBOS(unittest.TestCase):
             n_train=self.n_train, n_test=self.n_test,
             contamination=self.contamination, random_state=42)
 
-        self.clf = HBOS(contamination=self.contamination)
-        self.clf.set_mode("dynamic")
+        self.clf = HBOS(contamination=self.contamination,mode="dynamic")
         self.clf.fit(self.X_train)
 
     def test_parameters(self):
@@ -254,8 +253,7 @@ class TestNoLogScaleHBOS(unittest.TestCase):
             n_train=self.n_train, n_test=self.n_test,
             contamination=self.contamination, random_state=42)
 
-        self.clf = HBOS(contamination=self.contamination)
-        self.clf.set_log_scale(False)
+        self.clf = HBOS(contamination=self.contamination,log_scale=False)
         self.clf.fit(self.X_train)
 
     def test_parameters(self):
@@ -365,8 +363,7 @@ class TestSmoothHBOS(unittest.TestCase):
             n_train=self.n_train, n_test=self.n_test,
             contamination=self.contamination, random_state=42)
 
-        self.clf = HBOS(contamination=self.contamination)
-        self.clf.set_smooth(True)
+        self.clf = HBOS(contamination=self.contamination,smoothen=True)
         self.clf.fit(self.X_train)
 
     def test_parameters(self):
@@ -476,9 +473,7 @@ class TestRanked2HBOS(unittest.TestCase):
             n_train=self.n_train, n_test=self.n_test,
             contamination=self.contamination, random_state=42)
 
-        self.clf = HBOS(contamination=self.contamination)
-        self.clf.set_ranked(True)
-        self.clf.set_same_score_same_rank(True)
+        self.clf = HBOS(contamination=self.contamination,ranked=True,same_score_same_rank=True)
         self.clf.fit(self.X_train)
 
     def test_parameters(self):
@@ -588,8 +583,7 @@ class TestRankedHBOS(unittest.TestCase):
             n_train=self.n_train, n_test=self.n_test,
             contamination=self.contamination, random_state=42)
 
-        self.clf = HBOS(contamination=self.contamination)
-        self.clf.set_ranked(True)
+        self.clf = HBOS(contamination=self.contamination,ranked=True)
         self.clf.fit(self.X_train)
 
     def test_parameters(self):
