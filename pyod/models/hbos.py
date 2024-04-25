@@ -644,7 +644,6 @@ class HBOS(BaseDetector):
         """Function to return explainability scores of the fitted estimator.
         Only works if save_explainability_scores was True while fitting the estimator.
         If this was not the case an empty array will be returned.
-        Use set_save_explainability_scores(True).
 
             Parameters
             ----------
