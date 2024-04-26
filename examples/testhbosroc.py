@@ -3,6 +3,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import LabelEncoder
 from matplotlib import pyplot as plt
 from pyod.models.hbospyod import HBOSPYOD
+from pyod.utils.data import generate_data
 from pyod.models.hbos import HBOS
 
 import pandas as pd
@@ -18,10 +19,7 @@ def calc_score(dataset_, orig_, n_bins_):
     # Now apply LOF on normalized data ...
     clf_name = 'HBOS'
     clf = HBOSPYOD()
-    clf.set_n_bins(n_bins_)
-    #clf.set_ranked(True)
-    #clf.set_smooth(True)
-   #clf.set_mode("dynamic")
+    clf.set_params(n_bins=n_bins_,mode="static")
     lab = clf.fit(data_)
 
     scores = clf.decision_scores_
@@ -32,8 +30,7 @@ def calc_score(dataset_, orig_, n_bins_):
 
     # sort data frame by score
     hbos_orig_sorted = hbos_orig.sort_values(by=['scores'], ascending=False)
-    #print(hbos_orig_sorted)
-    # print(hbos_orig_sorted['Class'])
+    print(hbos_orig_sorted)
     fpr, tpr, thresholds = metrics.roc_curve(hbos_orig_sorted['Class'], hbos_orig_sorted['scores'])
     auc = metrics.auc(fpr, tpr)
     # auc = roc_auc_score(hbos_orig_sorted['Class'], hbos_orig_sorted['scores'])
@@ -57,8 +54,13 @@ if __name__ == "__main__":
     aucs = []
     np.set_printoptions(threshold=np.inf)
 
+    X_train, y_train =generate_data(n_train=1000,n_features=2,contamination=0.1,random_state=42,train_only=True)
+    dataset6 = pd.DataFrame(X_train)
+    dataset6['Class']=y_train
+
+
     dataset2 = pd.read_csv(r"C:\Users\david\Desktop\datasets\breast-cancer-unsupervised-ad.csv")
-    dataset = pd.read_csv(r"C:\Users\david\Desktop\datasets\creditcard.csv")
+    dataset1 = pd.read_csv(r"C:\Users\david\Desktop\datasets\creditcard.csv")
     dataset3 = pd.read_csv(r"C:\Users\david\Desktop\datasets\pen-local-unsupervised-ad.csv")
     dataset4, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets\literature\Shuttle\Shuttle_withoutdupl_norm_v01.arff')
@@ -66,19 +68,18 @@ if __name__ == "__main__":
     dataset5, meta2 = arff.loadarff(
         r'C:\Users\david\Desktop\datasets\semantic\HeartDisease\HeartDisease_withoutdupl_02_v01.arff')
     dataset5 = pd.DataFrame(dataset5)
-
     dataset4['Class'] = dataset4['Class'].astype(int)
     dataset5['Class'] = dataset5['Class'].astype(int)
-    orig = dataset.copy()
+    orig1 = dataset1.copy()
     orig2 = dataset2.copy()
     orig3 = dataset3.copy()
     orig4 = dataset4.copy()
     orig5 = dataset5.copy()
-    print(len(dataset4))
+    orig6= dataset6.copy()
 
-    del dataset['Time']
-    del dataset['Amount']
-    del dataset['Class']
+    del dataset1['Time']
+    del dataset1['Amount']
+    del dataset1['Class']
 
     del dataset2['Class']
     del dataset3['Class']
@@ -89,6 +90,6 @@ if __name__ == "__main__":
 
     for i in range (1):
         #calc_score(dataset4, orig4,n_bins_=i+1)
-        calc_score(dataset4, orig4, n_bins_=71)
+        calc_score(dataset1, orig1, n_bins_="auto")
     sorted_array = sorted(aucs, key=lambda x: x[1],reverse=True)
     print(sorted_array)
