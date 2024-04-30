@@ -194,7 +194,6 @@ class HBOSPYOD(BaseDetector):
             self.n_bins = round(math.sqrt(self.n_samples_))
 
         if self.mode == "static":
-            print("static mode")
             # Create histograms for every dimension
             self.create_static_histogram(X)
 
@@ -212,11 +211,9 @@ class HBOSPYOD(BaseDetector):
             self.decision_scores_ = self.calc_hbos_scores(self.n_samples_, self.n_features_, self.bin_id_array_)
             self._process_decision_scores()
             end_time_total = time.time()
-            print("Time taken to, ", end_time_total - start_time_total)
             return self
 
         elif self.mode == "dynamic":
-            print("dynamic mode")
 
             # Create histograms for every dimension
             self.create_dynamic_histogram(X)
@@ -232,7 +229,6 @@ class HBOSPYOD(BaseDetector):
             self.decision_scores_ = self.calc_hbos_scores(self.n_samples_, self.n_features_, self.bin_id_array_)
             self._process_decision_scores()
             end_time_total = time.time()
-            print("Time taken to, ", end_time_total - start_time_total)
             return self
 
     def digitize(self, X):
@@ -287,7 +283,6 @@ class HBOSPYOD(BaseDetector):
             samples_per_bin = math.floor(self.n_samples_ / self.n_bins)
         else:
             samples_per_bin = self.samples_per_bin
-        print(samples_per_bin, "samples per bin")
         for i in range(self.n_features_):
             last = None
             binfirst = []

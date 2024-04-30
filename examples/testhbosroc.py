@@ -5,12 +5,45 @@ from matplotlib import pyplot as plt
 from pyod.models.hbospyod import HBOSPYOD
 from pyod.utils.data import generate_data
 from pyod.models.hbos import HBOS
+from matplotlib import pyplot as plt
+import numpy as np
+import matplotlib.cm as cm
 
 import pandas as pd
 from scipy.io import loadmat, arff
 import numpy as np
 
 from pyod.utils import precision_n_scores
+
+def plot_explainability(data,id):
+    clf=HBOSPYOD(save_explainability_scores=True)
+    clf.fit(data)
+
+    y_values = clf.get_explainability_scores(id)
+    print(y_values)
+    x_values = range(1, len(y_values)+1)
+
+    # Labels erstellen
+    labels = ['Dimension {}'.format(i+1) for i in range(clf.n_features_)]
+
+    print(labels)
+    print(y_values)
+
+    colors = cm.RdYlGn_r((y_values - np.min(y_values)) / (np.max(y_values) - np.min(y_values)))  # Skalieren der Werte auf [0, 1] und Farbskala umkehren
+
+    plt.bar(x_values, y_values, align='center', color=colors, label="test")
+
+
+    plt.xlabel('feature n')
+    plt.ylabel('score')
+
+    plt.title('Outlier score for sample: {}'.format(id)+' with outlierscore = {0:0.4f}'.format(clf.decision_scores_[id]))
+    plt.legend(loc="lower right")
+    plt.show()
+
+
+
+
 
 
 def calc_score(dataset_, orig_, n_bins_):
@@ -19,9 +52,9 @@ def calc_score(dataset_, orig_, n_bins_):
     # Now apply LOF on normalized data ...
     clf_name = 'HBOS'
     clf = HBOSPYOD()
-    clf.set_params(n_bins=n_bins_,mode="static")
+    clf.set_params(n_bins=n_bins_,mode="dynamic",ranked=False,smoothen=False)
     lab = clf.fit(data_)
-
+    n_bins.append(n_bins_)
     scores = clf.decision_scores_
 
     # Add scores to original data frame
@@ -30,12 +63,12 @@ def calc_score(dataset_, orig_, n_bins_):
 
     # sort data frame by score
     hbos_orig_sorted = hbos_orig.sort_values(by=['scores'], ascending=False)
-    print(hbos_orig_sorted)
+    #print(hbos_orig_sorted)
     fpr, tpr, thresholds = metrics.roc_curve(hbos_orig_sorted['Class'], hbos_orig_sorted['scores'])
     auc = metrics.auc(fpr, tpr)
     # auc = roc_auc_score(hbos_orig_sorted['Class'], hbos_orig_sorted['scores'])
 
-    plt.figure(figsize=[8, 5])
+    '''plt.figure(figsize=[8, 5])
     plt.plot(fpr, tpr, color='r', lw=2, label=clf_name)
     plt.plot([0, 1], [0, 1], color='k', lw=2, linestyle='--', label='guessing')
     plt.xlim([0.0, 1.0])
@@ -43,15 +76,17 @@ def calc_score(dataset_, orig_, n_bins_):
     plt.xlabel('False Positive Rate')
     plt.ylabel('True Positive Rate')
 
-    plt.title('Receiver operating characteristic: AUC_LOF ={0:0.4f}'.format(auc))
+    plt.title('Receiver operating characteristic: HBOS_AUC ={0:0.4f}'.format(auc))
     plt.legend(loc="lower right")
     plt.show()
     tupel = (n_bins_, auc)
-    aucs.append(tupel)
+    aucs.append(tupel)'''
+    aucs.append(auc)
 
 
 if __name__ == "__main__":
     aucs = []
+    n_bins=[]
     np.set_printoptions(threshold=np.inf)
 
     X_train, y_train =generate_data(n_train=1000,n_features=2,contamination=0.1,random_state=42,train_only=True)
@@ -87,9 +122,17 @@ if __name__ == "__main__":
     del dataset4['id']
     del dataset4['Class']
     del dataset5['Class']
+    plot_explainability(dataset1,0)
 
-    for i in range (1):
-        #calc_score(dataset4, orig4,n_bins_=i+1)
-        calc_score(dataset1, orig1, n_bins_="auto")
-    sorted_array = sorted(aucs, key=lambda x: x[1],reverse=True)
-    print(sorted_array)
+    '''for i in range (100):
+        #calc_score(dataset3, orig3,n_bins_=i+1)
+        calc_score(dataset6, orig6, n_bins_=i+1)
+    plt.figure(figsize=[8, 5])
+    plt.plot(n_bins, aucs, color='b', lw=2, label='AUC vs. n_bins')
+    plt.xlabel('Number of Bins (n_bins)')
+    plt.ylabel('Area Under the Curve (AUC)')
+    plt.title('AUC vs. Number of Bins, Dataset 2, static  HBOS')
+    plt.legend(loc="lower right")
+    plt.grid(True)
+    plt.show()'''
+
