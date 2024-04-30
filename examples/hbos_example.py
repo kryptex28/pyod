@@ -41,6 +41,7 @@ if __name__ == "__main__":
     clf_name = 'HBOSPYOD'
     clf_name2= 'HBOS'
     clf = HBOSPYOD()
+
     #clf.set_ranked(True)
     clf.set_params(n_bins=10,smoothen=True, mode="static",ranked=False,save_explainability_scores= False)
     clf.fit(X_train)
@@ -73,8 +74,8 @@ if __name__ == "__main__":
     evaluate_print(clf_name2, y_test, y_test_scores2)'''
 
     # visualize the results
-    visualize(clf_name, X_train, y_train, X_test, y_test, y_train_pred,
-              y_test_pred, show_figure=True, save_figure=False)
+    #visualize(clf_name, X_train, y_train, X_test, y_test, y_train_pred,
+    #          y_test_pred, show_figure=True, save_figure=False)
 
     #visualize(clf_name2, X_train, y_train, X_test, y_test, y_train_pred2,
               #y_test_pred2, show_figure=True, save_figure=False)
@@ -90,3 +91,4 @@ if __name__ == "__main__":
     print(precision_n_scores(y_test,y_test_scores))'''
 
     #print(clf.get_explainability_scores(1))
+    print(clf.get_explainability_scores("all"))

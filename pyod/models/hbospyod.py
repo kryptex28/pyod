@@ -1,4 +1,5 @@
 import math
+import sys
 import time
 
 from sklearn.utils import check_array
@@ -654,6 +655,7 @@ class HBOSPYOD(BaseDetector):
             """
         check_is_fitted(self, ['hist_', 'bin_edges_array_'])
         if len(self.explainability_scores_) == 0:
+            print("Warning: No explainability scores", file=sys.stderr)
             return self.explainability_scores_
         elif sampleid == "all":
             return self.explainability_scores_

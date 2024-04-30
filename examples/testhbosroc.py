@@ -24,18 +24,17 @@ def plot_explainability(data,id):
     x_values = range(1, len(y_values)+1)
 
     # Labels erstellen
-    labels = ['Dimension {}'.format(i+1) for i in range(clf.n_features_)]
+    labels = ['Feature: {}'.format(i+1) for i in range(clf.n_features_)]
 
     print(labels)
     print(y_values)
 
     colors = cm.RdYlGn_r((y_values - np.min(y_values)) / (np.max(y_values) - np.min(y_values)))  # Skalieren der Werte auf [0, 1] und Farbskala umkehren
+    plt.figure(figsize=[8, 5])
+    #plt.bar(labels, y_values, align='center', color=colors, label="test")
+    plt.barh(np.arange(len(y_values)), y_values,color=colors, tick_label=labels)
 
-    plt.bar(x_values, y_values, align='center', color=colors, label="test")
-
-
-    plt.xlabel('feature n')
-    plt.ylabel('score')
+    plt.xlabel('score')
 
     plt.title('Outlier score for sample: {}'.format(id)+' with outlierscore = {0:0.4f}'.format(clf.decision_scores_[id]))
     plt.legend(loc="lower right")
@@ -68,7 +67,7 @@ def calc_score(dataset_, orig_, n_bins_):
     auc = metrics.auc(fpr, tpr)
     # auc = roc_auc_score(hbos_orig_sorted['Class'], hbos_orig_sorted['scores'])
 
-    '''plt.figure(figsize=[8, 5])
+    plt.figure(figsize=[8, 5])
     plt.plot(fpr, tpr, color='r', lw=2, label=clf_name)
     plt.plot([0, 1], [0, 1], color='k', lw=2, linestyle='--', label='guessing')
     plt.xlim([0.0, 1.0])
@@ -80,7 +79,7 @@ def calc_score(dataset_, orig_, n_bins_):
     plt.legend(loc="lower right")
     plt.show()
     tupel = (n_bins_, auc)
-    aucs.append(tupel)'''
+    aucs.append(tupel)
     aucs.append(auc)
 
 
@@ -122,11 +121,11 @@ if __name__ == "__main__":
     del dataset4['id']
     del dataset4['Class']
     del dataset5['Class']
-    plot_explainability(dataset1,0)
+    plot_explainability(dataset1,55555)
 
-    '''for i in range (100):
+    for i in range (1):
         #calc_score(dataset3, orig3,n_bins_=i+1)
-        calc_score(dataset6, orig6, n_bins_=i+1)
+        calc_score(dataset2, orig2, n_bins_="auto")
     plt.figure(figsize=[8, 5])
     plt.plot(n_bins, aucs, color='b', lw=2, label='AUC vs. n_bins')
     plt.xlabel('Number of Bins (n_bins)')
@@ -134,5 +133,5 @@ if __name__ == "__main__":
     plt.title('AUC vs. Number of Bins, Dataset 2, static  HBOS')
     plt.legend(loc="lower right")
     plt.grid(True)
-    plt.show()'''
+    plt.show()
 
