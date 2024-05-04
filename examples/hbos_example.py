@@ -43,7 +43,7 @@ if __name__ == "__main__":
     clf = HBOSPYOD()
 
     #clf.set_ranked(True)
-    clf.set_params(n_bins=10,smoothen=True, mode="static",ranked=False,save_explainability_scores= False)
+    clf.set_params(n_bins="auto",smoothen=False, mode="static",ranked=False,save_explainability_scores= False)
     clf.fit(X_train)
     clf2= HBOS()
     clf2.fit(X_train)
@@ -59,14 +59,14 @@ if __name__ == "__main__":
     y_test_pred = clf.predict(X_test)  # outlier labels (0 or 1)
     y_test_scores = clf.decision_function(X_test)  # outlier scores
 
-    y_test_pred2 = clf2.predict(X_test)  # outlier labels (0 or 1)
-    y_test_scores2 = clf2.decision_function(X_test)  # outlier scores
+    #y_test_pred2 = clf2.predict(X_test)  # outlier labels (0 or 1)
+    #y_test_scores2 = clf2.decision_function(X_test)  # outlier scores
 
     # evaluate and print the results
     print("\nOn Training Data:")
     evaluate_print(clf_name, y_train, y_train_scores)
     print("\nOn Test Data:")
-    evaluate_print(clf_name, y_test, y_test_scores)
+    #evaluate_print(clf_name, y_test, y_test_scores)
 
     '''print("\nOn Training Data2:")
     evaluate_print(clf_name2, y_train, y_train_scores2)
@@ -74,8 +74,8 @@ if __name__ == "__main__":
     evaluate_print(clf_name2, y_test, y_test_scores2)'''
 
     # visualize the results
-    #visualize(clf_name, X_train, y_train, X_test, y_test, y_train_pred,
-    #          y_test_pred, show_figure=True, save_figure=False)
+    visualize(clf_name, X_train, y_train, X_test, y_test, y_train_pred,
+              y_test_pred, show_figure=True, save_figure=False)
 
     #visualize(clf_name2, X_train, y_train, X_test, y_test, y_train_pred2,
               #y_test_pred2, show_figure=True, save_figure=False)

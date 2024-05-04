@@ -51,7 +51,7 @@ if __name__ == "__main__":
     # clf.set_save_scores(True)
     # firstrow = hbos_orig["V1"]
     # firstrow = np.array(firstrow)
-    clf.set_mode("static")
+    clf.set_params(smoothen=False,mode="static")
     clf.fit(data)
 
     hbos_scores = clf.decision_scores_
@@ -69,9 +69,10 @@ if __name__ == "__main__":
     plt.ylabel('Anomalies found')
     plt.show()'''
 
-    clf2.set_mode("dynamic")
+    clf2.set_params(mode="dynamic",smoothen=True)
     # clf2.set_save_scores(True)
     clf2.fit(data)
+    rere=clf2.get_explainability_scores(0)
     res = clf2.predict_proba(data)
     # print("TEST TEST TEST,", res)
     ans = clf.predict(data)
@@ -116,3 +117,4 @@ if __name__ == "__main__":
     # print(clf3.predict_proba(scaled_values))
     # my_dict= clf2.all_scores_per_sample_dict#
     # print(my_dict[0])'''
+    clf4=HBOSPYOD()

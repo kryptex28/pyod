@@ -193,6 +193,8 @@ class HBOSPYOD(BaseDetector):
         self.max_values_per_feature_ = np.max(X, axis=0)
         if self.n_bins == "auto":
             self.n_bins = round(math.sqrt(self.n_samples_))
+            #sf = math.sqrt(2)
+            #self.n_bins = round(math.sqrt(self.n_samples_ * self.n_features_) / sf)
 
         if self.mode == "static":
             # Create histograms for every dimension
@@ -221,6 +223,8 @@ class HBOSPYOD(BaseDetector):
 
             # get bin ids
             self.digitize(X)
+            if self.smoothen:
+                print("Warning: Smoothen==True is only supported in static mode and has no impact in dynamic mode.", file=sys.stderr)
 
             # calculate raw density scores for every bin
             self.get_bin_density()
@@ -292,6 +296,7 @@ class HBOSPYOD(BaseDetector):
             bin_edges = []
             bin_widths = []
             idataset = X[:, i]
+
             data, anzahl = np.unique(idataset, return_counts=True)
             counter = 0
             for num, quantity_of_num in zip(data, anzahl):
@@ -330,13 +335,21 @@ class HBOSPYOD(BaseDetector):
 
             # if last bin got bin width 0, merge it with second last bin
             # otherwise it would have infinite density
-            if binlast[-1] - binfirst[-1] == 0:
-                counters[-2] = counters[-2] + counters[-1]
-                counters = np.delete(counters, -1)
-                bin_edges = np.delete(bin_edges, -2)
-                binlast = np.delete(binlast, -2)
-                binfirst = np.delete(binfirst, -1)
 
+            if binlast[-1] - binfirst[-1] == 0:
+                if len(binfirst) > 1:
+                    #print("MERGED LAST BIN", bin_edges)
+                    counters[-2] = counters[-2] + counters[-1]
+                    counters = np.delete(counters, -1)
+                    bin_edges = np.delete(bin_edges, -2)
+                    binlast = np.delete(binlast, -2)
+                    binfirst = np.delete(binfirst, -1)
+
+                else:
+                    print("ONLY ONE BIN", i, "i", bin_edges)
+                    binlast[0] = binlast[0] + 1
+                    #bin_edges[1]= bin_edges[1]+1
+            #print("unique samples: ",len(np.unique(idataset)), "samples per bin:", samples_per_bin, "bins:",len(counters))
             self.n_bins_array_.append(len(counters))
             self.hist_.append(counters)
             self.bin_edges_array_.append(bin_edges)
@@ -373,7 +386,6 @@ class HBOSPYOD(BaseDetector):
             for j in range(self.n_bins_array_[i] - 1):
                 if self.mode == "dynamic":
                     binwidth = dynlist[j + 1]
-
                 # bin height / (bin width / biggest sample in the feature)
                 score = (hist_[j + 1]) / (binwidth * self.n_samples_ / (abs(max_)))
                 scores_bins.append(score)
@@ -391,45 +403,43 @@ class HBOSPYOD(BaseDetector):
         Save maximum density score for every feature (needed to normalize density scores)
         see: https://dergipark.org.tr/en/download/article-file/2959698
         """
-        if self.mode == "dynamic":
-            self.get_bin_density()
-        else:
-            histogram_list_adjsuted = []
-            for i in range(self.n_features_):
-                hist = []
-                tmphist = self.hist_[i]
-                tmphist_pad = np.pad(tmphist, (1, 1), 'constant')
-                for j in range(len(tmphist_pad) - 2):
-                    tmpvalue = (tmphist_pad[j] + tmphist_pad[j + 1] + tmphist_pad[j + 2]) / 3
-                    hist.append(tmpvalue)
-                histogram_list_adjsuted.append(hist)
 
-            for i in range(self.n_features_):  # get the highest score
+        histogram_list_adjsuted = []
+        for i in range(self.n_features_):
+            hist = []
+            tmphist = self.hist_[i]
+            tmphist_pad = np.pad(tmphist, (1, 1), 'constant')
+            for j in range(len(tmphist_pad) - 2):
+                tmpvalue = (tmphist_pad[j] + tmphist_pad[j + 1] + tmphist_pad[j + 2]) / 3
+                hist.append(tmpvalue)
+            histogram_list_adjsuted.append(hist)
 
-                max_ = self.max_values_per_feature_[i]
-                if max_ == 0:
-                    max_ = 1.0
-                hist_ = histogram_list_adjsuted[i]
+        for i in range(self.n_features_):  # get the highest score
+
+            max_ = self.max_values_per_feature_[i]
+            if max_ == 0:
+                max_ = 1.0
+            hist_ = histogram_list_adjsuted[i]
+            if self.mode == "dynamic":
+                dynlist = self.bin_width_array_[i]
+                binwidth = dynlist[0]
+            else:
+                binwidth = self.bin_width_array_[i]
+            scores_ = []
+            max_score = (hist_[0]) / (binwidth * 1 / (abs(max_)))
+            scores_.append(max_score)
+            for j in range(self.n_bins_array_[i] - 1):
                 if self.mode == "dynamic":
-                    dynlist = self.bin_width_array_[i]
-                    binwidth = dynlist[0]
-                else:
-                    binwidth = self.bin_width_array_[i]
-                scores_ = []
-                max_score = (hist_[0]) / (binwidth * 1 / (abs(max_)))
-                scores_.append(max_score)
-                for j in range(self.n_bins_array_[i] - 1):
-                    if self.mode == "dynamic":
-                        binwidth = dynlist[j]
+                    binwidth = dynlist[j]
 
-                    # bin height / (bin width / biggest sample in the feature)
-                    score = (hist_[j + 1]) / (binwidth * 1 / (abs(max_)))
-                    scores_.append(score)
-                    if score > max_score:
-                        max_score = score
+                # bin height / (bin width / biggest sample in the feature)
+                score = (hist_[j + 1]) / (binwidth * 1 / (abs(max_)))
+                scores_.append(score)
+                if score > max_score:
+                    max_score = score
 
-                self.highest_score_.append(max_score)
-                self.score_array_.append(scores_)
+            self.highest_score_.append(max_score)
+            self.score_array_.append(scores_)
 
     def normalize_density(self):
         """The internal function to normalize the raw density scores
@@ -444,8 +454,11 @@ class HBOSPYOD(BaseDetector):
             for j in range(len(scores_i)):
                 if scores_i[j] > 0:
                     tmp = scores_i[j]
+
                     tmp = tmp * 1 / maxscore
+                    #print("maxScore",maxscore," scores_i", scores_i[j], "tmp ",tmp)
                     tmp = 1 / tmp
+                    #print("tmp,",tmp)
                     scores_i[j] = tmp
             normalized_scores.append(scores_i)
         self.score_array_ = normalized_scores
@@ -481,6 +494,7 @@ class HBOSPYOD(BaseDetector):
         ranked_scores = []
         for i in range(self.n_features_):
             scores_i = self.score_array_[i]
+            unique = np.unique(scores_i)
             sorted_indices = np.argsort(scores_i)
             ranks = np.zeros(len(scores_i))
             counter = 1
@@ -640,11 +654,11 @@ class HBOSPYOD(BaseDetector):
         """Function to return explainability scores of the fitted estimator.
         Only works if save_explainability_scores was True while fitting the estimator.
         If this was not the case an empty array will be returned.
-        Use set_save_explainability_scores(True).
+        Set save_explainability_scores to True.
 
             Parameters
             ----------
-            sampleid : int
+            sampleid : int, String
                 The index of the data point one wishes get the explainability scores of.
                 "all" returns the scores of all samples.
 
@@ -655,10 +669,44 @@ class HBOSPYOD(BaseDetector):
             """
         check_is_fitted(self, ['hist_', 'bin_edges_array_'])
         if len(self.explainability_scores_) == 0:
-            print("Warning: No explainability scores", file=sys.stderr)
+            print('Warning: Explainability scores have not been saved. Set save_explainability_scores to True '
+                  'before fitting the estimator.', file=sys.stderr)
             return self.explainability_scores_
         elif sampleid == "all":
             return self.explainability_scores_
         else:
             return self.explainability_scores_[sampleid]
 
+    def fit2(self,X):
+        y=None
+        X = check_array(X)
+        self._set_n_classes(y)
+        self.n_features_ = X.shape[1]
+        self.n_samples_ = len(X)
+        ranked_scores = []
+        for i in range(self.n_features_):
+            idataset = X[:, i]
+            if len(np.unique(idataset))==1 and len(np.unique(idataset))==2:
+                print("yes")
+            # sort scores
+            sorted_values = sorted(idataset)
+            score_rank_dict = {}
+            current_rank = 1
+            for score in sorted_values:
+                if score not in score_rank_dict:
+                    score_rank_dict[score] = current_rank
+                    current_rank += 1
+            new_ranks = np.array([score_rank_dict[score] for score in idataset])
+            min_value = np.min(new_ranks)
+            max_value = np.max(new_ranks)
+            #normalized_sample_ranks_sum = (new_ranks - min_value) / (max_value - min_value)
+            normalized_sample_ranks_sum = new_ranks / max_value
+            avg_normalized = np.mean(normalized_sample_ranks_sum)
+            #median_normalized = np.median(normalized_sample_ranks_sum)
+            iscores= np.abs(normalized_sample_ranks_sum - avg_normalized)
+
+            ranked_scores.append(iscores)
+
+        sample_sum = np.sum(ranked_scores, axis=0)
+        self.decision_scores_ = sample_sum
+        self._process_decision_scores()
