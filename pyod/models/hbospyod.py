@@ -168,7 +168,7 @@ class HBOSPYOD(BaseDetector):
         self : object
             Fitted estimator.
         """
-        start_time_total = time.time()
+
         self.hist_ = []
         self.bin_edges_array_ = []
         self.decision_scores_ = []
@@ -191,11 +191,9 @@ class HBOSPYOD(BaseDetector):
         self.n_features_ = X.shape[1]
         self.n_samples_ = len(X)
         self.max_values_per_feature_ = np.max(X, axis=0)
+
         if self.n_bins == "auto":
             self.n_bins = round(math.sqrt(self.n_samples_))
-            #sf = math.sqrt(2)
-            #self.n_bins = round(math.sqrt(self.n_samples_ * self.n_features_) / sf)
-
         if self.mode == "static":
             # Create histograms for every dimension
             self.create_static_histogram(X)
@@ -224,7 +222,8 @@ class HBOSPYOD(BaseDetector):
             # get bin ids
             self.digitize(X)
             if self.smoothen:
-                print("Warning: Smoothen==True is only supported in static mode and has no impact in dynamic mode.", file=sys.stderr)
+                print("Warning: Smoothen==True is only supported in static mode and has no impact in dynamic mode.",
+                      file=sys.stderr)
 
             # calculate raw density scores for every bin
             self.get_bin_density()
@@ -263,8 +262,12 @@ class HBOSPYOD(BaseDetector):
         """
         for i in range(self.n_features_):
             if self.n_bins == "calc":
-                self.n_bins = get_optimal_n_bins(X[:, i])
-            hist, bin_edges = np.histogram(X[:, i], bins=self.n_bins, density=False)
+                n_bins = get_optimal_n_bins(X[:, i])
+            elif self.n_bins == "unique":
+                n_bins = round(math.sqrt(len(np.unique(X[:, i]))))
+            else:
+                n_bins = self.n_bins
+            hist, bin_edges = np.histogram(X[:, i], bins=n_bins, density=False)
             bin_width = bin_edges[1] - bin_edges[0]
             self.n_bins_array_.append(len(hist))
 
@@ -281,13 +284,12 @@ class HBOSPYOD(BaseDetector):
         X : numpy array of shape (n_samples, n_features)
             The input samples.
         """
-        if self.n_bins == "calc":
-            self.n_bins = round(math.sqrt(self.n_samples_))
 
-        if self.samples_per_bin == "auto":
-            samples_per_bin = math.floor(self.n_samples_ / self.n_bins)
-        else:
-            samples_per_bin = self.samples_per_bin
+        if not isinstance(self.n_bins, str):
+            if self.samples_per_bin == "auto":
+                samples_per_bin = math.floor(self.n_samples_ / self.n_bins)
+            else:
+                samples_per_bin = self.samples_per_bin
         for i in range(self.n_features_):
             last = None
             binfirst = []
@@ -296,6 +298,20 @@ class HBOSPYOD(BaseDetector):
             bin_edges = []
             bin_widths = []
             idataset = X[:, i]
+            if self.n_bins == "calc":
+                n_bins = get_optimal_n_bins(X[:, i])
+                if self.samples_per_bin == "auto":
+                    samples_per_bin = math.floor(self.n_samples_ / n_bins)
+                else:
+                    samples_per_bin = self.samples_per_bin
+            if self.n_bins == "unique":
+                n_bins = round(math.sqrt(len(np.unique(X[:, i]))))
+                if n_bins < 2:
+                    n_bins = 2
+                if self.samples_per_bin == "auto":
+                    samples_per_bin = math.floor(self.n_samples_ / n_bins)
+                else:
+                    samples_per_bin = self.samples_per_bin
 
             data, anzahl = np.unique(idataset, return_counts=True)
             counter = 0
@@ -338,7 +354,7 @@ class HBOSPYOD(BaseDetector):
 
             if binlast[-1] - binfirst[-1] == 0:
                 if len(binfirst) > 1:
-                    #print("MERGED LAST BIN", bin_edges)
+                    # print("MERGED LAST BIN", bin_edges)
                     counters[-2] = counters[-2] + counters[-1]
                     counters = np.delete(counters, -1)
                     bin_edges = np.delete(bin_edges, -2)
@@ -346,10 +362,10 @@ class HBOSPYOD(BaseDetector):
                     binfirst = np.delete(binfirst, -1)
 
                 else:
-                    print("ONLY ONE BIN", i, "i", bin_edges)
+                    # print("ONLY ONE BIN", i, "i", bin_edges)
                     binlast[0] = binlast[0] + 1
-                    #bin_edges[1]= bin_edges[1]+1
-            #print("unique samples: ",len(np.unique(idataset)), "samples per bin:", samples_per_bin, "bins:",len(counters))
+                    # bin_edges[1]= bin_edges[1]+1
+            # print("unique samples: ",len(np.unique(idataset)), "samples per bin:", samples_per_bin, "bins:",len(counters))
             self.n_bins_array_.append(len(counters))
             self.hist_.append(counters)
             self.bin_edges_array_.append(bin_edges)
@@ -456,9 +472,9 @@ class HBOSPYOD(BaseDetector):
                     tmp = scores_i[j]
 
                     tmp = tmp * 1 / maxscore
-                    #print("maxScore",maxscore," scores_i", scores_i[j], "tmp ",tmp)
+                    # print("maxScore",maxscore," scores_i", scores_i[j], "tmp ",tmp)
                     tmp = 1 / tmp
-                    #print("tmp,",tmp)
+                    # print("tmp,",tmp)
                     scores_i[j] = tmp
             normalized_scores.append(scores_i)
         self.score_array_ = normalized_scores
@@ -677,8 +693,8 @@ class HBOSPYOD(BaseDetector):
         else:
             return self.explainability_scores_[sampleid]
 
-    def fit2(self,X):
-        y=None
+    def fit2(self, X):
+        y = None
         X = check_array(X)
         self._set_n_classes(y)
         self.n_features_ = X.shape[1]
@@ -686,7 +702,7 @@ class HBOSPYOD(BaseDetector):
         ranked_scores = []
         for i in range(self.n_features_):
             idataset = X[:, i]
-            if len(np.unique(idataset))==1 and len(np.unique(idataset))==2:
+            if len(np.unique(idataset)) == 1 and len(np.unique(idataset)) == 2:
                 print("yes")
             # sort scores
             sorted_values = sorted(idataset)
@@ -699,11 +715,11 @@ class HBOSPYOD(BaseDetector):
             new_ranks = np.array([score_rank_dict[score] for score in idataset])
             min_value = np.min(new_ranks)
             max_value = np.max(new_ranks)
-            #normalized_sample_ranks_sum = (new_ranks - min_value) / (max_value - min_value)
+            # normalized_sample_ranks_sum = (new_ranks - min_value) / (max_value - min_value)
             normalized_sample_ranks_sum = new_ranks / max_value
             avg_normalized = np.mean(normalized_sample_ranks_sum)
-            #median_normalized = np.median(normalized_sample_ranks_sum)
-            iscores= np.abs(normalized_sample_ranks_sum - avg_normalized)
+            # median_normalized = np.median(normalized_sample_ranks_sum)
+            iscores = np.abs(normalized_sample_ranks_sum - avg_normalized)
 
             ranked_scores.append(iscores)
 
