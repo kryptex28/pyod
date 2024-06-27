@@ -1,18 +1,20 @@
 import math
 import sys
+from scipy.special import ndtri
+from scipy.stats import iqr, skew
 import time
 
 from sklearn.utils import check_array
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
 from .base import BaseDetector
-from ..utils import get_optimal_n_bins
+from ..utils import get_optimal_n_bins, check_parameter
 
 
 class HBOSPYOD(BaseDetector):
     """The HBOS algorithm calculates the outlier score based on
     univariate histograms and the normalized density of their bins.
-    For every feature of the dataset (each column) a separate histogram is calculated
+    For every feature of the dataset a separate histogram is calculated.
 
     There are two modes:
     In the static mode all bins of a histogram have the same bin width and
@@ -45,8 +47,8 @@ class HBOSPYOD(BaseDetector):
         Decides which mode is used. "static" uses the static mode,
         "dynamic" uses the dynamic mode
 
-    n_bins : int or string, optional (default="auto)
-        The number of bins. "auto uses the square root of the number
+    n_bins : int or string, optional (default="sqrt)
+        The number of bins. "sqrt uses the square root of the number
         of samples. "calc" uses the birge-rozenblac method for
         automatic selection of the optimal number of bins for each
         feature (only in static mode in dynamic the square root is still used).
@@ -137,12 +139,11 @@ class HBOSPYOD(BaseDetector):
         ``threshold_`` on ``decision_scores_``.
     """
 
-    def __init__(self, mode="static", n_bins="auto", samples_per_bin="auto", smoothen=False,
-                 save_explainability_scores=False, log_scale=True, ranked=False, same_score_same_rank=False,
+    def __init__(self, mode="static", n_bins="sqrt", samples_per_bin="auto", smoothen=False,
+                 save_explainability_scores=False, log_scale=True, ranked=False,
                  tol=0.5, contamination=0.1):
         super(HBOSPYOD, self).__init__(contamination=contamination)
 
-        self.same_score_same_rank = same_score_same_rank
         self.ranked = ranked
         self.log_scale = log_scale
         self.smoothen = smoothen
@@ -151,6 +152,8 @@ class HBOSPYOD(BaseDetector):
         self.n_bins = n_bins
         self.samples_per_bin = samples_per_bin
         self.tol = tol
+
+        check_parameter(tol, 0, 1, param_name='tol')
 
     def fit(self, X, y=None):
         """Fit detector. y is ignored in unsupervised methods.
@@ -192,8 +195,17 @@ class HBOSPYOD(BaseDetector):
         self.n_samples_ = len(X)
         self.max_values_per_feature_ = np.max(X, axis=0)
 
-        if self.n_bins == "auto":
-            self.n_bins = round(math.sqrt(self.n_samples_))
+        modes = ["fd", "br", "unique", "doane", "scott", "sturges"]
+
+        if isinstance(self.n_bins, str):
+            if self.n_bins == "sqrt":
+                self.n_bins = round(math.sqrt(self.n_samples_))
+
+            '''elif self.n_bins not in modes:
+                warning = 'Warning: "' + self.n_bins + '" is not a valid option for n_bins. "sqrt" will be used instead'
+                print(warning, file=sys.stderr)
+                self.n_bins = round(math.sqrt(self.n_samples_))'''
+
         if self.mode == "static":
             # Create histograms for every dimension
             self.create_static_histogram(X)
@@ -235,6 +247,238 @@ class HBOSPYOD(BaseDetector):
             end_time_total = time.time()
             return self
 
+    @staticmethod
+    def get_fd_doane(X):
+        range_data = np.ptp(X)
+        nunique = len(np.unique(X))
+        if range_data == 0:
+            print("return 1 unique")
+            return 1
+        if nunique == 2:
+            print("return 2 unique")
+            return 2
+        else:
+            n = len(X)
+            n13 = n ** (1.0 / 3.0)
+            nsturges = (range_data / (np.log2(n) + 1.0))
+            iqrval = iqr(X)
+            sg1 = np.sqrt(6.0 * (n - 2) / ((n + 1.0) * (n + 3)))
+            sigma = np.std(X)
+            doane = range_data / (1.0 + np.log2(n))
+            skewval = abs(skew(X))
+            if sigma > 0.0:
+                g1 = skewval
+                doane = range_data / (1.0 + np.log2(n) + np.log2(1.0 + np.absolute(g1) / sg1))
+
+            if (iqrval):
+                fd = 2.0 * (iqrval / n13)
+                best = min(fd, doane)
+                if best == 0:
+                    print("AlarM!!!!!!!!!!!!!")
+            else:
+                best = doane
+            n_bins = int(np.ceil(range_data / best))
+
+            return n_bins
+
+    @staticmethod
+    def get_st_doane(X):
+        # st_doane
+        range_data = np.ptp(X)
+        nunique = len(np.unique(X))
+        if range_data == 0:
+            print("return 1 unique")
+            return 1
+        if nunique == 2:
+            print("return 2 unique")
+            return 2
+        else:
+            n = len(X)
+            nsturges = (range_data / (np.log2(n) + 1.0))
+            sg1 = np.sqrt(6.0 * (n - 2) / ((n + 1.0) * (n + 3)))
+            sigma = np.std(X)
+            doane = range_data / (1.0 + np.log2(n))
+            skewval = abs(skew(X))
+            if sigma > 0.0:
+                g1 = skewval
+                doane = range_data / (1.0 + np.log2(n) + np.log2(1.0 + np.absolute(g1) / sg1))
+
+            if skewval > 1:
+                best = doane
+            else:
+                best = nsturges
+
+            n_bins = int(np.ceil(range_data / best))
+
+            return n_bins
+
+    @staticmethod
+    def get_combined3(X):
+        range_data = np.ptp(X)
+        nunique = len(np.unique(X))
+        if range_data == 0:
+            print("return 1 unique")
+            return 1
+        if nunique == 2:
+            print("return 2 unique")
+            return 2
+        else:
+            thresholddown = range_data * 0.2
+            n = len(X)
+            n13 = n ** (1.0 / 3.0)
+
+            iqrval = iqr(X)
+            nsturges = (range_data / (np.log2(n) + 1.0))
+
+            sg1 = np.sqrt(6.0 * (n - 2) / ((n + 1.0) * (n + 3)))
+            sigma = np.std(X)
+            doane = range_data / (1.0 + np.log2(n))
+            skewval = abs(skew(X))
+            fd = 2.0 * (iqrval / n13)
+
+            if sigma > 0.0:
+                g1 = skewval
+                doane = range_data / (1.0 + np.log2(n) + np.log2(1.0 + np.absolute(g1) / sg1))
+
+            skewthreshold = 1
+
+            if iqrval > thresholddown:
+                if skewval >= skewthreshold:
+                    best = min(fd, doane)
+                else:
+                    best = min(fd, nsturges)
+
+            elif skewval >= skewthreshold:
+                best = doane
+            else:
+                best = nsturges
+
+            n_bins = int(np.ceil(range_data / best))
+
+            return n_bins
+
+    @staticmethod
+    def get_fd2(X):
+        range_data = np.ptp(X)
+        nunique = len(np.unique(X))
+        if range_data == 0:
+            print("return 1 unique")
+            return 1
+        if nunique == 2:
+            print("return 2 unique")
+            return 2
+        else:
+
+            n = len(X)
+            n13 = n ** (1.0 / 3.0)
+            iqrval = iqr(X)
+            if iqrval:
+                fd = 2.0 * (iqrval / n13)
+                n_bins = int(np.ceil(range_data / fd))
+
+            else:
+                n_bins = 2
+            if n_bins < 2:
+                n_bins = 2
+
+            return n_bins
+
+    @staticmethod
+    def get_combined(X):
+
+        range_data = np.ptp(X)
+        nunique = len(np.unique(X))
+        if range_data == 0:
+            print("return 1 unique")
+            return 1
+        if nunique == 2:
+            print("return 2 unique")
+            return 2
+        else:
+            n = len(X)
+            n13 = n ** (1.0 / 3.0)
+
+            iqrval = iqr(X)
+            nsturges = (range_data / (np.log2(n) + 1.0))
+
+            sg1 = np.sqrt(6.0 * (n - 2) / ((n + 1.0) * (n + 3)))
+            sigma = np.std(X)
+            doane = range_data / (1.0 + np.log2(n))
+            skewval = abs(skew(X))
+            fd = 2 * (iqrval / n13)
+
+            if sigma > 0.0:
+                g1 = skewval
+                doane = range_data / (1.0 + np.log2(n) + np.log2(1.0 + np.absolute(g1) / sg1))
+
+            skewthreshold = 1
+
+            if iqrval:
+                if skewval >= skewthreshold:
+                    best = min(fd, doane)
+                else:
+                    best = min(fd, nsturges)
+
+            elif skewval >= skewthreshold:
+                best = doane
+            else:
+                best = nsturges
+
+            n_bins = int(np.ceil(range_data / best))
+
+            return n_bins
+        '''range_data = np.ptp(X)
+        nunique = len(np.unique(X))
+        if range_data == 0:
+            print("return 1 unique")
+            return 1
+        if nunique == 2:
+            print("return 2 unique")
+            return 2
+        else:
+            thresholddown = range_data * 0.2
+            n = len(X)
+            n13 = n ** (1.0 / 3.0)
+            iqrval = iqr(X)
+            nsturges = (range_data / (np.log2(n) + 1.0))
+
+            sg1 = np.sqrt(6.0 * (n - 2) / ((n + 1.0) * (n + 3)))
+            sigma = np.std(X)
+            doane = range_data / (1.0 + np.log2(n))
+            skewval = abs(skew(X))
+            # scott = (24.0 * np.pi ** 0.5 / n) ** (1.0 / 3.0) * np.std(data)
+            fd = 2.0 * (iqrval / n13)
+            # kstest_result = kstest(data, 'norm', args=(np.mean(data), np.std(data)))
+            # normal = kstest_result.pvalue > 0.05
+
+            if sigma > 0.0:
+                g1 = skewval
+                doane = range_data / (1.0 + np.log2(n) + np.log2(1.0 + np.absolute(g1) / sg1))
+
+            # if normal:
+            #    best = scott
+            #   print("scott")
+            # best = min(scott, nsturges)
+
+            if iqrval > thresholddown and skewval < 1:
+
+                best = min(fd, nsturges)
+                if fd < nsturges:
+                    print("fd")
+                else:
+                    print("struges2")
+            elif skewval > 1:
+                best = doane
+                print("doane")
+            else:
+                print("else!")
+                best = nsturges
+                # best = range_data / 10
+
+            n_bins = int(np.ceil(range_data / best))
+
+            return n_bins'''
+
     def digitize(self, X):
         """The internal function to calculate the ids for every histogram, in which bin
         each sample belong to.
@@ -261,13 +505,35 @@ class HBOSPYOD(BaseDetector):
             The input samples.
         """
         for i in range(self.n_features_):
-            if self.n_bins == "calc":
-                n_bins = get_optimal_n_bins(X[:, i])
-            elif self.n_bins == "unique":
-                n_bins = round(math.sqrt(len(np.unique(X[:, i]))))
+            data_ = X[:, i]
+            if self.n_bins == "br":
+                n_bins = get_optimal_n_bins(data_)
+            elif self.n_bins == "combined":
+                n_bins = self.get_combined(data_)
+            elif self.n_bins == "st_doane":
+                n_bins = self.get_st_doane(data_)
+            elif self.n_bins == "combined3":
+                n_bins = self.get_combined3(data_)
+            elif self.n_bins == "fd_doane":
+                n_bins = self.get_fd_doane(data_)
+            elif self.n_bins == "fd_st":
+                n_bins = "auto"
+            elif self.n_bins == "fd":
+                n_bins = "fd"
+            elif self.n_bins == "fd2":
+                n_bins = self.get_fd2(data_)
+            elif self.n_bins == "scott":
+                n_bins = "scott"
+            elif self.n_bins == "doane":
+                n_bins = "doane"
+            elif self.n_bins == "sturges":
+                n_bins = "sturges"
+            elif self.n_bins == "rice":
+                n_bins = "rice"
+                self.n_bins = int(np.ceil(2.0 * self.n_samples_ ** (1.0 / 3)))
             else:
                 n_bins = self.n_bins
-            hist, bin_edges = np.histogram(X[:, i], bins=n_bins, density=False)
+            hist, bin_edges = np.histogram(data_, bins=n_bins, density=False)
             bin_width = bin_edges[1] - bin_edges[0]
             self.n_bins_array_.append(len(hist))
 
@@ -286,10 +552,8 @@ class HBOSPYOD(BaseDetector):
         """
 
         if not isinstance(self.n_bins, str):
-            if self.samples_per_bin == "auto":
-                samples_per_bin = math.floor(self.n_samples_ / self.n_bins)
-            else:
-                samples_per_bin = self.samples_per_bin
+            n_bins = self.n_bins
+
         for i in range(self.n_features_):
             last = None
             binfirst = []
@@ -298,20 +562,36 @@ class HBOSPYOD(BaseDetector):
             bin_edges = []
             bin_widths = []
             idataset = X[:, i]
-            if self.n_bins == "calc":
-                n_bins = get_optimal_n_bins(X[:, i])
-                if self.samples_per_bin == "auto":
-                    samples_per_bin = math.floor(self.n_samples_ / n_bins)
-                else:
-                    samples_per_bin = self.samples_per_bin
-            if self.n_bins == "unique":
-                n_bins = round(math.sqrt(len(np.unique(X[:, i]))))
-                if n_bins < 2:
-                    n_bins = 2
-                if self.samples_per_bin == "auto":
-                    samples_per_bin = math.floor(self.n_samples_ / n_bins)
-                else:
-                    samples_per_bin = self.samples_per_bin
+            isnominal = False
+            unique_values = np.unique(idataset)  # get unique sorted values
+
+            # if there is more than one unique value, check if all the unique values
+            # have the same distances to their neighbours
+            # -> may be a nominal feature which was encoded
+            if len(unique_values) > 1:
+                dist = np.diff(unique_values)  # calculate distances
+                #isnominal = np.all(dist == dist[0])  # check if all distances are the same
+            n = len(idataset)
+            if self.samples_per_bin == "auto":
+                if isinstance(self.n_bins, str):
+                    if self.n_bins == "unique":
+                        n_bins = round(math.sqrt(len(np.unique(idataset))))
+                        if n_bins < 2:
+                            n_bins = 2
+                    elif self.n_bins == "fd_st1":
+                        n_bins = self.get_combined(idataset)
+                    elif self.n_bins == "ten":
+                        n_bins = 10
+                    elif self.n_bins == "m1":
+                        n_bins = 3 * (n ** (2 / 5))
+                    elif self.n_bins == "m2":
+                        phi_inv_alpha = ndtri(0.05)
+                        phi_inv_alpha2 = phi_inv_alpha ** 2
+                        n_bins = 4 * ((2 * n ** 2) / phi_inv_alpha2) ** (1 / 5)
+
+                samples_per_bin = np.ceil(self.n_samples_ / n_bins)
+            else:
+                samples_per_bin = self.samples_per_bin
 
             data, anzahl = np.unique(idataset, return_counts=True)
             counter = 0
@@ -341,6 +621,36 @@ class HBOSPYOD(BaseDetector):
                     counter = 0
                 last = num
 
+            # if last bin got bin width zero (only one unique value is in that bin),
+            # merge it with second last bin otherwise the last bin would have an infinite density
+
+            # if binlast[-1] - binfirst[-1] == 0:
+            cadasdas = counters[-1]
+            adasdad = samples_per_bin
+            if binlast[-1] - binfirst[-1] == 0:
+                if len(binfirst) > 2:
+                    # only features which are not nominal get merged
+                    if isnominal == False:
+                        counters[-2] = counters[-2] + counters[-1]
+                        counters = np.delete(counters, -1)
+                        binlast = np.delete(binlast, -2)
+                        binfirst = np.delete(binfirst, -1)
+                    # elif isnominal == True:
+                    # print("test1")
+
+                elif binlast[-1] - binfirst[-1] == 0:
+                    # if there are only two bins, do not merge but increase the right edge of the
+                    # second (last) bin so that both bins have the same width
+                    if len(binfirst) == 2:
+                        binlast[1] = binlast[1] + (binfirst[1] - binfirst[0])
+
+                    # if there is only one bin (only one unique value in this feature for all samples)
+                    # do not merge but increase the right edge by one so that the bin with is one
+                    # otherwise the bin would have bin width zero and therefore infinite density aswell
+
+                    elif len(binfirst) == 1:
+                        binlast[-1] = binlast[-1] + 1
+
             # Get bin edges, use the next bins left edge as right edge, otherwise
             # there may be holes in the histogram
             for edge in binfirst:
@@ -349,23 +659,6 @@ class HBOSPYOD(BaseDetector):
             # last bin is an exception, here the biggest value in the bin is the right edge
             bin_edges.append(binlast[-1])
 
-            # if last bin got bin width 0, merge it with second last bin
-            # otherwise it would have infinite density
-
-            if binlast[-1] - binfirst[-1] == 0:
-                if len(binfirst) > 1:
-                    # print("MERGED LAST BIN", bin_edges)
-                    counters[-2] = counters[-2] + counters[-1]
-                    counters = np.delete(counters, -1)
-                    bin_edges = np.delete(bin_edges, -2)
-                    binlast = np.delete(binlast, -2)
-                    binfirst = np.delete(binfirst, -1)
-
-                else:
-                    # print("ONLY ONE BIN", i, "i", bin_edges)
-                    binlast[0] = binlast[0] + 1
-                    # bin_edges[1]= bin_edges[1]+1
-            # print("unique samples: ",len(np.unique(idataset)), "samples per bin:", samples_per_bin, "bins:",len(counters))
             self.n_bins_array_.append(len(counters))
             self.hist_.append(counters)
             self.bin_edges_array_.append(bin_edges)
@@ -375,8 +668,17 @@ class HBOSPYOD(BaseDetector):
                 bin_widths.append(bin_width)
 
             # calculate bin width of last bin
-            binwidth = binlast[-1] - binfirst[-1]
-            bin_widths.append(binwidth)
+            binwidthlast = binlast[-1] - binfirst[-1]
+
+            # if the last bin width is 0 (is only possible for a nominal feature
+            # since the bine would have been merged otherwise)
+            # The last bin is given the smallest occurring bin width in the feature.
+            if isnominal:
+                if binwidthlast == 0:
+                    smallest_width = np.min(bin_widths)
+                    binwidthlast = smallest_width
+
+            bin_widths.append(binwidthlast)
             self.bin_width_array_.append(bin_widths)
 
     def get_bin_density(self):
@@ -402,7 +704,7 @@ class HBOSPYOD(BaseDetector):
             for j in range(self.n_bins_array_[i] - 1):
                 if self.mode == "dynamic":
                     binwidth = dynlist[j + 1]
-                # bin height / (bin width / biggest sample in the feature)
+
                 score = (hist_[j + 1]) / (binwidth * self.n_samples_ / (abs(max_)))
                 scores_bins.append(score)
                 if score > max_score:
@@ -411,7 +713,7 @@ class HBOSPYOD(BaseDetector):
             self.highest_score_.append(max_score)
             self.score_array_.append(scores_bins)
 
-    def get_bin_density_smooth(self):  # wie in
+    def get_bin_density_smooth(self):
         """The internal function to calculate the raw density scores of each bin in each histogram.
         of each bin in each histogram. (bin height/width) A normalized bin width is used.
         Here the average of the bin height and the height of the neighbour bins is taken.
@@ -425,9 +727,12 @@ class HBOSPYOD(BaseDetector):
             hist = []
             tmphist = self.hist_[i]
             tmphist_pad = np.pad(tmphist, (1, 1), 'constant')
-            for j in range(len(tmphist_pad) - 2):
-                tmpvalue = (tmphist_pad[j] + tmphist_pad[j + 1] + tmphist_pad[j + 2]) / 3
-                hist.append(tmpvalue)
+            if len(self.hist_[i]) > 5:
+                for j in range(len(tmphist_pad) - 2):
+                    tmpvalue = (tmphist_pad[j] + tmphist_pad[j + 1] + tmphist_pad[j + 2]) / 3
+                    hist.append(tmpvalue)
+            else:
+                hist = tmphist
             histogram_list_adjsuted.append(hist)
 
         for i in range(self.n_features_):  # get the highest score
@@ -479,7 +784,7 @@ class HBOSPYOD(BaseDetector):
             normalized_scores.append(scores_i)
         self.score_array_ = normalized_scores
 
-    def rank_scores_same_score_same_rank(self):
+    def rank_scores(self):
         """The internal function for the ranked mode.
         The bins in each histogram are sorted then ranked,
         the smallest bin gets the smallest rank etc.
@@ -497,7 +802,13 @@ class HBOSPYOD(BaseDetector):
                     score_rank_dict[score] = current_rank
                     current_rank += 1
             new_ranks = np.array([score_rank_dict[score] for score in scores_i])
-            ranked_scores.append(new_ranks)
+            max_score = np.max(new_ranks)
+
+            new_ranks_norm = new_ranks / max_score
+            new_ranks_norm = new_ranks
+
+            ranked_scores.append(new_ranks_norm)
+
         self.score_array_ = ranked_scores
 
     def rank_scores_no_empty_bins(self):
@@ -519,14 +830,14 @@ class HBOSPYOD(BaseDetector):
                 if scores_i[tmpid] > 0:
                     ranks[tmpid] = counter
                     counter = counter + 1
+            max_score = np.max(ranks)
+            # new_ranks_norm = ranks / max_score
             ranked_scores.append(ranks)
         self.score_array_ = ranked_scores
 
     def calc_hbos_scores(self, samples, features, bin_id_array):
         """The internal function to calculate the outlier scores based on
         the bins and histograms constructed with the training data. The program
-        is optimized through numba. It is excluded from coverage test for
-        eliminating the redundancy.
 
         Parameters
         ----------
@@ -544,14 +855,13 @@ class HBOSPYOD(BaseDetector):
         anomaly_scores : numpy array of shape (n_samples,)
             The anomaly score of the input samples.
         """
-        for a in range(features):
-            self.highest_score_id_.append(np.argmax(self.score_array_[a]) + 1)
+
         hbos_scores = np.zeros(samples)
         if self.ranked:
-            if self.same_score_same_rank:
-                self.rank_scores_same_score_same_rank()
-            else:
-                self.rank_scores_no_empty_bins()
+            self.rank_scores()
+            # self.rank_scores_no_empty_bins()
+        for a in range(features):
+            self.highest_score_id_.append(np.argmax(self.score_array_[a]) + 1)
 
         for i in range(samples):
             if self.log_scale:
@@ -692,37 +1002,3 @@ class HBOSPYOD(BaseDetector):
             return self.explainability_scores_
         else:
             return self.explainability_scores_[sampleid]
-
-    def fit2(self, X):
-        y = None
-        X = check_array(X)
-        self._set_n_classes(y)
-        self.n_features_ = X.shape[1]
-        self.n_samples_ = len(X)
-        ranked_scores = []
-        for i in range(self.n_features_):
-            idataset = X[:, i]
-            if len(np.unique(idataset)) == 1 and len(np.unique(idataset)) == 2:
-                print("yes")
-            # sort scores
-            sorted_values = sorted(idataset)
-            score_rank_dict = {}
-            current_rank = 1
-            for score in sorted_values:
-                if score not in score_rank_dict:
-                    score_rank_dict[score] = current_rank
-                    current_rank += 1
-            new_ranks = np.array([score_rank_dict[score] for score in idataset])
-            min_value = np.min(new_ranks)
-            max_value = np.max(new_ranks)
-            # normalized_sample_ranks_sum = (new_ranks - min_value) / (max_value - min_value)
-            normalized_sample_ranks_sum = new_ranks / max_value
-            avg_normalized = np.mean(normalized_sample_ranks_sum)
-            # median_normalized = np.median(normalized_sample_ranks_sum)
-            iscores = np.abs(normalized_sample_ranks_sum - avg_normalized)
-
-            ranked_scores.append(iscores)
-
-        sample_sum = np.sum(ranked_scores, axis=0)
-        self.decision_scores_ = sample_sum
-        self._process_decision_scores()

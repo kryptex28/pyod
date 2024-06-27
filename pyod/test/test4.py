@@ -18,6 +18,28 @@ if __name__ == "__main__":
     clf = HBOSPYOD()
     clf2 = HBOSPYOD()
 
+    mean = 200  # Mittelwert
+    std_dev = 10  # Standardabweichung
+    num_samples = 97  # Anzahl der zu generierenden Datenpunkte
+
+    # Generieren der Daten
+    data = np.random.normal(mean, std_dev, num_samples)
+
+    # Generating 99 data points from a standard uniform distribution [0,1]
+    uniform_data = np.random.uniform(250, 300, 97)
+    uniform_data2 = np.random.uniform(0, 10, 99)
+
+    # Adding an extreme point valued
+
+    extreme_point = np.array([0,1,2])
+    extreme_point2 = np.array([100, 101])
+
+
+    # Combining the uniform data with the extreme point
+    mixed_data = np.append(uniform_data, extreme_point)
+
+    #print(mixed_data)
+
     dataset = pd.read_csv(r"C:\Users\david\Desktop\datasets\creditcard.csv")
     # data = arff.loadarff(r'C:\Users\david\Desktop\datasets\literature\ALOI\ALOI_withoutdupl_norm.arff')
     data = arff.loadarff(r'C:\Users\david\Desktop\datasets\literature\ALOI\ALOI_withoutdupl.arff')
@@ -36,6 +58,14 @@ if __name__ == "__main__":
     data = np.array(dataset)
     hbos_orig = orig.copy()
 
+    harvard3 = pd.read_csv(r'C:\Users\david\Desktop\datasets_hbos\Harvard Dataverse\breast-cancer-unsupervised-ad.csv',
+                           header=None)
+    lastcol = harvard3.columns[-1]
+    harvard3.rename(columns={lastcol: 'Class'}, inplace=True)
+    harvard3label = harvard3['Class']
+    harvardorig3 = harvard3.copy()
+    del harvard3['Class']
+
     '''c=20
     time2=0
     for i in range(c):
@@ -47,20 +77,49 @@ if __name__ == "__main__":
     time2=time2
     print(time2,"time")'''
 
+
+
+
     # clf.set_adjust(True)
     # clf.set_save_scores(True)
     # firstrow = hbos_orig["V1"]
     # firstrow = np.array(firstrow)
-    clf.set_params(smoothen=False,mode="static")
-    clf.fit(data)
+    #clf.set_params(smoothen=False,mode="static", n_bins="combined")
+    clf.set_params(mode="dynamic",ranked=False,n_bins=10)
+    mixed_data = mixed_data.reshape(-1, 1)
+    time1start=time.time()
+    clf.fit(mixed_data)
+    print(len(mixed_data))
+    time1end=time.time()
+    print("time 1",time1end-time1start)
+    #print(clf.score_array_)
 
-    hbos_scores = clf.decision_scores_
+    print(mixed_data)
+    bin_edges= np.array(clf.bin_edges_array_[0])
+    bin_breite = clf.bin_width_array_[0]
+    heights= np.array(clf.hist_[0])
+    scores = clf.score_array_[0]
+    print(heights)
+    print(clf.decision_scores_)
+    #bin_positionen = np.cumsum([0] + bin_breite[:-1])
+    density = heights / bin_breite
+    print(density)
+    # Erzeuge das Histogramm
+    #plt.bar(bin_positionen, heights, width=bin_breite, align='edge', edgecolor='black', linewidth=1.5)
+    plt.bar(bin_edges[:-1], density, width=np.diff(bin_edges), align='edge', edgecolor='black')
+
+    plt.title('Histogram ')
+    plt.xlabel('Data')
+    plt.ylabel('Frequency')
+
+    plt.show()
+    '''hbos_scores = clf.decision_scores_
 
     hbos_orig['hbos'] = hbos_scores
     hbos_top1000_data = hbos_orig.sort_values(by=['hbos'], ascending=False)[:1000]
     hbos_top1000_data.to_csv('hbos_top1000_data.txt')
     print(hbos_top1000_data)
-    print(len(hbos_top1000_data[lambda x: x['Class'] == 1]), " gefunden")
+    print(len(hbos_top1000_data[lambda x: x['Class'] == 1]), " gefunden")'''
 
     '''print(hbos_top1000_data['Class'].cumsum().sum())
     plt.scatter(range(1000), hbos_top1000_data['Class'].cumsum(), marker='1')
@@ -69,13 +128,16 @@ if __name__ == "__main__":
     plt.ylabel('Anomalies found')
     plt.show()'''
 
-    clf2.set_params(mode="dynamic",smoothen=True)
+    clf2.set_params(mode="dynamic")
     # clf2.set_save_scores(True)
+    time1start=time.time()
     clf2.fit(data)
-    rere=clf2.get_explainability_scores(0)
+    time1end=time.time()
+    print("time 2",time1end-time1start)
+    #rere=clf2.get_explainability_scores(0)
     res = clf2.predict_proba(data)
     # print("TEST TEST TEST,", res)
-    ans = clf.predict(data)
+    #ans = clf.predict(data)
     # print("TEST",ans[:20])
     hbos_scores2 = clf2.decision_scores_
     hbos_orig2 = orig.copy()
@@ -117,4 +179,4 @@ if __name__ == "__main__":
     # print(clf3.predict_proba(scaled_values))
     # my_dict= clf2.all_scores_per_sample_dict#
     # print(my_dict[0])'''
-    clf4=HBOSPYOD()
+

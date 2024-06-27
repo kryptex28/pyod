@@ -43,7 +43,7 @@ if __name__ == "__main__":
     clf = HBOSPYOD()
 
     #clf.set_ranked(True)
-    clf.set_params(n_bins=2,smoothen=False, mode="static",ranked=False,save_explainability_scores= False)
+    clf.set_params(n_bins=10,smoothen=False, mode="static",ranked=False,save_explainability_scores= False)
     clf.fit(X_train)
     clf2= HBOS(n_bins="auto")
     clf2.fit(X_train)

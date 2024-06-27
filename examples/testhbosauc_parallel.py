@@ -1,6 +1,9 @@
 import multiprocessing
 import time
+from sklearn.metrics import average_precision_score
+
 import h5py
+import seaborn as sns
 from sklearn import metrics
 from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import LabelEncoder
@@ -9,17 +12,813 @@ from pyod.models.hbospyod import HBOSPYOD
 from pyod.utils.data import generate_data
 from pyod.models.hbos import HBOS
 from matplotlib import pyplot as plt
-import numpy as np
 import matplotlib.cm as cm
 
 import pandas as pd
 from scipy.io import loadmat, arff
 import numpy as np
+from sklearn.preprocessing import MinMaxScaler
 
 from pyod.utils import precision_n_scores
 
 
-def calc_auc_graph_static_or_dynamic(data_, orig_, count, dataname):
+def plot_distributions(df, title):
+    """
+    Plots histograms and boxplots for all numeric columns in the dataframe.
+
+    Parameters:
+    df (pd.DataFrame): The dataframe containing the data.
+    title (str): The title for the plots.
+    """
+    # Suche nach allen numerischen Spalten
+    numeric_columns = df.select_dtypes(include='number').columns
+    if len(numeric_columns) == 0:
+        raise ValueError('Der DataFrame enthält keine numerischen Spalten.')
+
+    for column in numeric_columns:
+        # Histogram plot
+        plt.figure(figsize=(12, 6))
+        sns.histplot(df[column], kde=True)
+        plt.title(f'Histogram of {column} - {title}')
+        plt.show()
+
+        # Boxplot
+        plt.figure(figsize=(12, 6))
+        sns.boxplot(x=df[column])
+        plt.title(f'Boxplot of {column} - {title}')
+        plt.show()
+
+
+def calc_average_combined(args_):
+    scaler = MinMaxScaler()
+
+    combined = []
+    combined_avg = 0
+    bins_combined = []
+
+    hbosranked = False
+
+    smooth_ = False
+    mode_ = "static"
+    n_data = len(args_)
+    print(n_data)
+    norm = False
+
+    for datatmp, labels_, _, _, in args_:
+        if norm:
+            datanorm = scaler.fit_transform(datatmp)
+            datanorm = pd.DataFrame(datanorm)
+            data_ = datanorm
+        else:
+            data_ = datatmp
+
+        combined_auc, _, bins ,_= calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "combined3")
+        combined.append(combined_auc)
+        combined_avg = combined_avg + combined_auc
+        bins_combined.append(bins)
+
+    fd_st2_avg = combined_avg / n_data
+
+    combined_var = np.std(combined)
+
+    allauc = [[fd_st2_avg, "combined", combined_var]]
+
+    for i in range(n_data):
+        print(args_[i][3], ", samples: ", len(args_[i][0]), " features: ", args_[i][0].shape[1])
+        print("combined", "  (AUC): ", round(combined[i], 5), bins_combined[i])
+
+        print("-------------------------------------------------")
+
+    values = []
+    methods = []
+    var = []
+
+    for item in allauc:
+        values.append(item[0])
+        methods.append(item[1])
+        var.append(item[2])
+
+    # Plot
+    plt.figure(figsize=(10, 6))
+    plt.xlim([0.5, 1.0])
+    plt.barh(methods, values, color='skyblue')
+    plt.xlabel('Durchschnittlicher AUC')
+    plt.ylabel('Methode')
+    plt.title('Durchschnittliche AUC für verschiedene Methoden')
+    plt.gca().invert_yaxis()  # Um die Anzeigereihenfolge der Methoden umzukehren
+    plt.show()
+
+    sorted_allauc = sorted(allauc, key=lambda x: x[0], reverse=True)
+
+    for auc in sorted_allauc:
+        print(auc[1], ": ", round(auc[0], 4), " s:", round(auc[2], 5))
+
+
+def calc_average_static(args_):
+    scaler = MinMaxScaler()
+
+    auto = []
+    auto_avg = 0
+    bins_auto = []
+    autotime = 0
+    auto_pns=[]
+
+    br = []
+    br_avg = 0
+    bins_br = []
+    brtime = 0
+    br_pns=[]
+
+    scott = []
+    scott_avg = 0
+    bins_scott = []
+    scotttime = 0
+    scott_pns=[]
+
+    doane = []
+    doane_avg = 0
+    bins_doane = []
+    doanetime = 0
+    doane_pns=[]
+
+    fd = []
+    fd_avg = 0
+    bins_fd = []
+    fdtime = 0
+    fd_pns=[]
+
+    fd2 = []
+    fd2_avg = 0
+    bins_fd2 = []
+    fd2time = 0
+    fd2_pns=[]
+
+    combined = []
+    combined_avg = 0
+    bins_combined = []
+    combinedtime = 0
+    combined_pns=[]
+
+    fd_st = []
+    fd_st_avg = 0
+    bins_fd_st = []
+    fd_sttime = 0
+    fd_st_pns=[]
+
+    sturges = []
+    sturges_avg = 0
+    bins_sturges = []
+    sturgestime = 0
+    sturges_pns=[]
+
+    ten = []
+    ten_avg = 0
+    bins_ten = []
+    tentime = 0
+    ten_pns=[]
+
+    rice = []
+    rice_avg = 0
+    bins_rice = []
+    ricetime = 0
+    rice_pns=[]
+
+    fd_doane = []
+    fd_doane_avg = 0
+    bins_fd_doane = []
+    fd_doanetime = 0
+    fd_doane_pns=[]
+
+    combined2 = []
+    combined2_avg = 0
+    bins_combined2 = []
+    combined2time = 0
+    combined2_pns=[]
+
+    combined3 = []
+    combined3_avg = 0
+    bins_combined3 = []
+    combined3time = 0
+    combined3_pns=[]
+
+    hbosranked = False
+    smooth_ = False
+    mode_ = "static"
+    n_data = len(args_)
+    print(n_data)
+    norm = False
+    datasetnames = []
+
+    for datatmp, labels_, _, datasetname in args_:
+        if norm:
+            datanorm = scaler.fit_transform(datatmp)
+            datanorm = pd.DataFrame(datanorm)
+            data_ = datanorm
+        else:
+            data_ = datatmp
+        datasetnames.append(datasetname)
+        starttime = time.time()
+        auto_auc, _, bins, auto_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sqrt")
+        auto.append(auto_auc)
+        auto_avg = auto_avg + auto_auc
+        bins_auto.append(bins)
+        autotime = autotime + (time.time() - starttime)
+        auto_pns.append(auto_pn)
+
+        starttime = time.time()
+        br_auc, _, bins, br_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sqrt")
+        br.append(br_auc)
+        br_avg = br_avg + br_auc
+        bins_br.append(bins)
+        brtime = brtime + (time.time() - starttime)
+        br_pns.append(br_pn)
+
+        starttime = time.time()
+        scott_auc, _, bins, scott_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "scott")
+        scott.append(scott_auc)
+        scott_avg = scott_avg + scott_auc
+        bins_scott.append(bins)
+        scotttime = scotttime + (time.time() - starttime)
+        scott_pns.append(scott_pn)
+
+        starttime = time.time()
+        doane_auc, _, bins, doane_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "doane")
+        doane.append(doane_auc)
+        doane_avg = doane_avg + doane_auc
+        bins_doane.append(bins)
+        doanetime = doanetime + (time.time() - starttime)
+        doane_pns.append(doane_pn)
+
+        starttime = time.time()
+        fd_auc, _, bins, fd_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "fd")
+        fd.append(fd_auc)
+        fd_avg = fd_avg + fd_auc
+        bins_fd.append(bins)
+        fdtime = fdtime + (time.time() - starttime)
+        fd_pns.append(fd_pn)
+
+        starttime = time.time()
+        fd2_auc, _, bins, fd2_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "fd2")
+        fd2.append(fd2_auc)
+        fd2_avg = fd2_avg + fd2_auc
+        bins_fd2.append(bins)
+        fd2time = fd2time + (time.time() - starttime)
+        fd2_pns.append(fd2_pn)
+
+        starttime = time.time()
+        combined_auc, _, bins, combined_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "combined")
+        combined.append(combined_auc)
+        combined_avg = combined_avg + combined_auc
+        bins_combined.append(bins)
+        combinedtime = combinedtime + (time.time() - starttime)
+        combined_pns.append(combined_pn)
+
+        starttime = time.time()
+        fd_st_auc, _, bins, fd_st_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "fd_st")
+        fd_st.append(fd_st_auc)
+        fd_st_avg = fd_st_avg + fd_st_auc
+        bins_fd_st.append(bins)
+        fd_sttime = fd_sttime + (time.time() - starttime)
+        fd_st_pns.append(fd_st_pn)
+
+        starttime = time.time()
+        sturges_auc, _, bins, sturges_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sturges")
+        sturges.append(sturges_auc)
+        sturges_avg = sturges_avg + sturges_auc
+        bins_sturges.append(bins)
+        sturgestime = sturgestime + (time.time() - starttime)
+        sturges_pns.append(sturges_pn)
+
+        starttime = time.time()
+        ten_auc, _, bins, ten_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, 10)
+        ten.append(ten_auc)
+        ten_avg = ten_avg + ten_auc
+        bins_ten.append(bins)
+        tentime = tentime + (time.time() - starttime)
+        ten_pns.append(ten_pn)
+
+        starttime = time.time()
+        rice_auc, _, bins, rice_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "rice")
+        rice.append(rice_auc)
+        rice_avg = rice_avg + rice_auc
+        bins_rice.append(bins)
+        ricetime = ricetime + (time.time() - starttime)
+        rice_pns.append(rice_pn)
+
+        starttime = time.time()
+        fd_doane_auc, _, bins, fd_doane_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "fd_doane")
+        fd_doane.append(fd_doane_auc)
+        fd_doane_avg = fd_doane_avg + fd_doane_auc
+        bins_fd_doane.append(bins)
+        fd_doanetime = fd_doanetime + (time.time() - starttime)
+        fd_doane_pns.append(fd_doane_pn)
+
+        starttime = time.time()
+        combined2_auc, _, bins, combined2_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "st_doane")
+        combined2.append(combined2_auc)
+        combined2_avg = combined2_avg + combined2_auc
+        bins_combined2.append(bins)
+        combined2time = combined2time + (time.time() - starttime)
+        combined2_pns.append(combined2_pn)
+
+        starttime = time.time()
+        combined3_auc, _, bins, combined3_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "combined3")
+        combined3.append(combined3_auc)
+        combined3_avg = combined3_avg + combined3_auc
+        bins_combined3.append(bins)
+        combined3time = combined3time + (time.time() - starttime)
+        combined3_pns.append(combined3_pn)
+
+    auto_avg = auto_avg / n_data
+    auto_avg2 = np.mean(auto)
+
+    br_avg = br_avg / n_data
+    scott_avg = scott_avg / n_data
+    doane_avg = doane_avg / n_data
+    fd_avg = fd_avg / n_data
+    fd2_avg = fd2_avg / n_data
+    combined_avg = combined_avg / n_data
+    fd_st_avg = fd_st_avg / n_data
+    sturges_avg = sturges_avg / n_data
+    ten_avg = ten_avg / n_data
+    rice_avg = rice_avg / n_data
+    fd_doane_avg = fd_doane_avg / n_data
+    combined2_avg = combined2_avg / n_data
+    combined3_avg = combined3_avg / n_data
+
+    auto_avg_pn = np.mean(auto_pns)
+    br_avg_pn = np.mean(br_pns)
+    scott_avg_pn = np.mean(scott_pns)
+    doane_avg_pn = np.mean(doane_pns)
+    fd_avg_pn = np.mean(fd_pns)
+    fd2_avg_pn = np.mean(fd2_pns)
+    combined_avg_pn = np.mean(combined_pns)
+    fd_st_avg_pn = np.mean(fd_st_pns)
+    sturges_avg_pn = np.mean(sturges_pns)
+    ten_avg_pn = np.mean(ten_pns)
+    rice_avg_pn = np.mean(rice_pns)
+    fd_doane_avg_pn = np.mean(fd_doane_pns)
+    combined2_avg_pn = np.mean(combined2_pns)
+    combined3_avg_pn = np.mean(combined3_pns)
+
+    '''auto_var=np.var(auto)
+    br_var = np.var(br)
+    scott_var = np.var(scott)
+    doane_var = np.var(doane)
+    fd_var = np.var(fd)
+    combined_var = np.var(fd_st1)
+    fd_st2_var = np.var(fd_st2)
+    sturges_var = np.var(sturges)
+    ten_var = np.var(ten)
+    rice_var = np.var(rice)'''
+
+    auto_var = np.std(auto)
+    br_var = np.std(br)
+    scott_var = np.std(scott)
+    doane_var = np.std(doane)
+    fd_var = np.std(fd)
+    fd2_var = np.std(fd2)
+    combined_var = np.std(combined)
+    fd_st_var = np.std(fd_st)
+    sturges_var = np.std(sturges)
+    ten_var = np.std(ten)
+    rice_var = np.std(rice)
+    fd_doane_var = np.std(doane)
+    combined2_var = np.std(combined2)
+    combined3_var = np.std(combined3)
+
+    allauc = []
+    allauc.append([(fd_avg), "fd", fd_var, fdtime])
+    allauc.append([(fd2_avg), "fd min 2", fd2_var, fd2time])
+    allauc.append([(br_avg), "br", br_var, brtime])
+    allauc.append([(auto_avg), "sqrt", auto_var, autotime])
+    allauc.append([(fd_st_avg), "fd_st", fd_st_var, fd_sttime])
+    allauc.append([(fd_doane_avg), "fd_doane", fd_doane_var, fd_doanetime])
+    allauc.append([(scott_avg), "scott", scott_var, scotttime])
+    allauc.append([(combined_avg), "combined", combined_var, combinedtime])
+    allauc.append([(rice_avg), "rice", rice_var, ricetime])
+    allauc.append([(ten_avg), "ten", ten_var, tentime])
+    allauc.append([(doane_avg), "doane", doane_var, doanetime])
+    allauc.append([(sturges_avg), "sturges", sturges_var, sturgestime])
+    allauc.append([(combined2_avg), "st_doane", combined2_var, combined2time])
+    allauc.append([(combined3_avg), "combined3", combined3_var, combined3time])
+
+    allpn = []
+    allpn.append([(fd_avg_pn), "fd"])
+    allpn.append([(fd2_avg_pn), "fd min 2"])
+    allpn.append([(br_avg_pn), "br"])
+    allpn.append([(auto_avg_pn), "sqrt"])
+    allpn.append([(fd_st_avg_pn), "fd_st"])
+    allpn.append([(fd_doane_avg_pn), "fd_doane"])
+    allpn.append([(scott_avg_pn), "scott"])
+    allpn.append([(combined_avg_pn), "combined"])
+    allpn.append([(rice_avg_pn), "rice" ])
+    allpn.append([(ten_avg_pn), "ten"])
+    allpn.append([(doane_avg_pn), "doane"])
+    allpn.append([(sturges_avg_pn), "sturges"])
+    allpn.append([(combined2_avg_pn), "st_doane"])
+    allpn.append([(combined3_avg_pn), "combined3"])
+
+    for i in range(n_data):
+        print(args_[i][3], ", samples: ", len(args_[i][0]), " features: ", args_[i][0].shape[1])
+
+        print("br", "       (AUC): ", round(br[i], 5), bins_br[i])
+        print("scott", "    (AUC): ", round(scott[i], 5), bins_scott[i])
+        print("sturges", "  (AUC): ", round(sturges[i], 5), bins_sturges[i])
+        print("doane", "    (AUC): ", round(doane[i], 5), bins_doane[i])
+        print("fd", "       (AUC): ", round(fd[i], 5), bins_fd[i])
+        print("fd2", "      (AUC): ", round(fd2[i], 5), bins_fd2[i])
+        print("combined", " (AUC): ", round(combined[i], 5), bins_combined[i])
+        print("combined3", "(AUC): ", round(combined3[i], 5), bins_combined3[i])
+        print("st_doane ", "(AUC): ", round(combined2[i], 5), bins_combined2[i])
+        print("fd_doane", " (AUC): ", round(fd_doane[i], 5), bins_fd_doane[i])
+        print("fd_st", "    (AUC): ", round(fd_st[i], 5), bins_fd_st[i])
+        print("ten", "      (AUC): ", round(ten[i], 5), bins_ten[i])
+        print("sqrt", "     (AUC): ", round(auto[i], 5), bins_auto[i])
+        print("rice", "     (AUC): ", round(rice[i], 5), bins_rice[i])
+        print("-------------------------------------------------")
+
+    values = []
+    methods = []
+    var = []
+
+    for item in allauc:
+        values.append(item[0])
+        methods.append(item[1])
+        var.append(item[2])
+
+    # Plot
+    plt.figure(figsize=(10, 6))
+    plt.xlim([0.8, 0.875])
+    plt.barh(methods, values, color='skyblue')
+    plt.xlabel('Durchschnittlicher AUC')
+    plt.ylabel('Methode')
+    plt.title('Durchschnittliche AUC für verschiedene Methoden')
+    plt.gca().invert_yaxis()  # Um die Anzeigereihenfolge der Methoden umzukehren
+    plt.show()
+
+    sorted_allauc = sorted(allauc, key=lambda x: x[0], reverse=True)
+    sorted_allpn = sorted(allpn, key=lambda x: x[0], reverse=True)
+
+    for auc in sorted_allauc:
+        print(auc[1], ": ", round(auc[0], 4), " s:", round(auc[2], 5), " time: ", auc[3])
+
+    print("-------------------------------------------------")
+
+    for pn in sorted_allpn:
+        print(pn[1], ": ", round(pn[0], 4))
+
+    exceldata = [
+        ['Dataset', 'AVG-AUC'],
+
+    ]
+
+    fd_list = [round(num, 4) for num in fd]
+    fdmin2_list = [round(num, 4) for num in fd2]
+    br_list = [round(num, 4) for num in br]
+    sqrt_list = [round(num, 4) for num in auto]
+    fd_st_list = [round(num, 4) for num in fd_st]
+    fd_doane_list = [round(num, 4) for num in fd_doane]
+    scott_list = [round(num, 4) for num in scott]
+    combined_list = [round(num, 4) for num in combined]
+    rice_list = [round(num, 4) for num in rice]
+    ten_list = [round(num, 4) for num in ten]
+    doane_list = [round(num, 4) for num in doane]
+    sturges_list = [round(num, 4) for num in sturges]
+    st_doane_list = [round(num, 4) for num in combined2]
+    combined3_list = [round(num, 4) for num in combined3]
+
+    exceldata = []
+    for dname, fd, fdmin2, br, sqrt, fd_st, fd_doane, scott, combined, rice, ten, doane, sturges, st_doane, combined3 in zip(
+            datasetnames, fd_list, fdmin2_list, br_list, sqrt_list, fd_st_list, fd_doane_list, scott_list,
+            combined_list, rice_list, ten_list, doane_list, sturges_list, st_doane_list, combined3_list):
+        exceldata.append(
+            [dname, fd, fdmin2, br, sqrt, fd_st, fd_doane, scott, combined, rice, ten, doane, sturges, st_doane,
+             combined3])
+
+    # Spaltenüberschriften definieren
+    header = ["Dataset Name", "FD", "FDmin2", "BR", "Sqrt", "FD_ST", "FD_Doane", "Scott", "Combined", "Rice", "Ten",
+              "Doane", "Sturges", "ST_Doane", "Combined3"]
+
+    # DataFrame erstellen
+    df = pd.DataFrame(exceldata, columns=header)
+
+    # DataFrame in eine Excel-Datei schreiben
+    df.to_excel("example_pandas.xlsx", index=False)
+
+    '''for dname, avg_auc in zip(datasetnames, combined_list):
+        exceldata.append([dname, avg_auc])
+
+    df = pd.DataFrame(exceldata[1:], columns=exceldata[0])
+
+    # DataFrame in eine Excel-Datei schreiben
+    df.to_excel("example_pandas.xlsx", index=False)'''
+
+    '''endtime= time.time()
+    print(auto_avg,"auto")
+    print(br_avg,"br")
+    print(scott_avg,"scott")
+    print(doane_avg,"doane")
+    print(fd_avg,"fd")
+    print(fd_st1_avg,"fd_st1")
+    print(fd_st2_avg,"fd_st2")
+    print(sturges_avg,"struges")
+    print(ten_avg,"ten")
+    print("time: ", endtime-start_time)'''
+
+
+def calc_average_dynamic(args_):
+    start_time = time.time()
+    auto = []
+    auto_avg = 0
+    bins_auto = []
+    autotime = 0
+
+    br = []
+    br_avg = 0
+    bins_br = []
+    brtime = 0
+
+    unique = []
+    unique_avg = 0
+    bins_unique = []
+    uniquetime = 0
+
+    ten = []
+    ten_avg = 0
+    bins_ten = []
+    tentime = 0
+
+    doane = []
+    doane_avg = 0
+    bins_doane = []
+    doanetime = 0
+
+    scaler = MinMaxScaler()
+
+    fd_st1 = []
+    fd_st1_avg = 0
+    bins_fd_st1 = []
+    fd_st1time = 0
+
+    datasetnames = []
+    hbosranked = False
+    norm = False
+    smooth_ = False
+    mode_ = "dynamic"
+    n_data = len(args_)
+    print(n_data)
+
+    for datatmp, labels_, _, datasetname in args_:
+        if norm:
+            datanorm = scaler.fit_transform(datatmp)
+            datanorm = pd.DataFrame(datanorm)
+            data_ = datanorm
+        else:
+            data_ = datatmp
+
+        datasetnames.append(datasetname)
+        print(datasetname)
+        starttime = time.time()
+        auto_auc, _, bins,_ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sqrt")
+        auto.append(auto_auc)
+        auto_avg = auto_avg + auto_auc
+        bins_auto.append(bins)
+        autotime = autotime + (time.time() - starttime)
+
+        starttime = time.time()
+        unique_auc, _, bins,_ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, 100)
+        unique.append(unique_auc)
+        unique_avg = unique_avg + unique_auc
+        bins_unique.append(bins)
+        uniquetime = uniquetime + (time.time() - starttime)
+
+        number = 200
+        starttime = time.time()
+        br_auc, _, bins,_ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, 200)
+        br.append(br_auc)
+        br_avg = br_avg + br_auc
+        bins_br.append(bins)
+        brtime = brtime + (time.time() - starttime)
+
+        starttime = time.time()
+        fd_st1_auc, _, bins,_ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "m1")
+        fd_st1.append(fd_st1_auc)
+        fd_st1_avg = fd_st1_avg + fd_st1_auc
+        bins_fd_st1.append(bins)
+        fd_st1time = fd_st1time + (time.time() - starttime)
+
+        starttime = time.time()
+        ten_auc, _, bins,_ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "ten")
+        ten.append(ten_auc)
+        ten_avg = ten_avg + ten_auc
+        bins_ten.append(bins)
+        tentime = tentime + (time.time() - starttime)
+
+        starttime = time.time()
+        doane_auc, _, bins,_ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "m2")
+        doane.append(doane_auc)
+        doane_avg = doane_avg + doane_auc
+        bins_doane.append(bins)
+        doanetime = doanetime + (time.time() - starttime)
+
+    auto_avg = auto_avg / n_data
+    br_avg = br_avg / n_data
+    unique_avg = unique_avg / n_data
+    fd_st1_avg = fd_st1_avg / n_data
+    doane_avg = doane_avg / n_data
+    ten_avg = ten_avg / n_data
+
+    auto_var = np.std(auto)
+    br_var = np.std(br)
+    doane_var = np.std(doane)
+    combined_var = np.std(fd_st1)
+    ten_var = np.std(ten)
+    unique_var = np.std(unique)
+
+    allauc = []
+    allauc.append([(unique_avg), "100", unique_var, uniquetime])
+    allauc.append([(auto_avg), "sqrt", auto_var, autotime])
+    allauc.append([(br_avg), "200", br_var, brtime])
+    allauc.append([(doane_avg), "m2", doane_var, doanetime])
+    allauc.append([(fd_st1_avg), "m1", combined_var, fd_st1time])
+    allauc.append([(ten_avg), "ten", ten_var, tentime])
+
+    for i in range(n_data):
+        print(args_[i][3], ", samples: ", len(args_[i][0]), " features: ", args_[i][0].shape[1])
+
+        print("m2", "  (AUC): ", round(doane[i], 5), bins_doane[i])
+
+        print("m1", "  (AUC): ", round(fd_st1[i], 5), bins_fd_st1[i])
+
+        print("sqrt", "    (AUC): ", round(auto[i], 5), bins_auto[i])
+
+        print("100", "     (AUC): ", round(unique[i], 5), bins_unique[i])
+
+        print("200", "     (AUC): ", round(br[i], 5), bins_br[i])
+
+        print("-------------------------------------------------")
+
+    values = []
+    methods = []
+    var = []
+
+    for item in allauc:
+        values.append(item[0])
+        methods.append(item[1])
+        var.append(item[2])
+
+    exceldata = [
+        ['Dataset', 'AVG-AUC'],
+
+    ]
+
+    rounded_data_list = [round(num, 4) for num in br]
+    for dname, avg_auc in zip(datasetnames, rounded_data_list):
+        exceldata.append([dname, avg_auc])
+
+    df = pd.DataFrame(exceldata[1:], columns=exceldata[0])
+
+    # DataFrame in eine Excel-Datei schreiben
+    df.to_excel("example_pandas.xlsx", index=False)
+
+    print(br)
+    # Plot
+    plt.figure(figsize=(10, 6))
+    plt.barh(methods, values, color='skyblue')
+    plt.xlabel('Durchschnittlicher AUC')
+    plt.ylabel('Methode')
+    plt.title('Durchschnittliche AUC für verschiedene Methoden')
+    plt.gca().invert_yaxis()  # Um die Anzeigereihenfolge der Methoden umzukehren
+    plt.show()
+
+    sorted_allauc = sorted(allauc, key=lambda x: x[0], reverse=True)
+
+    for auc in sorted_allauc:
+        print(auc[1], ": ", round(auc[0], 4), " s:", round(auc[2], 5), " time: ", auc[3])
+
+
+def calc_auc_graph_static_or_dynamic_2(datatmp, labels_, count, dataname):
+    print(dataname, ": current dataset")
+    scaler = MinMaxScaler()
+    aucs_static = []
+    maxatstatic = 0
+    maxaucstatic = 0
+    norm = True
+
+    if norm:
+        datanorm = scaler.fit_transform(datatmp)
+        datanorm = pd.DataFrame(datanorm)
+        data_ = datanorm
+    else:
+        data_ = datatmp
+
+    features = data_.shape[1]
+    samples = len(data_)
+
+    xval = []
+    hbosranked = False
+    smooth_ = False
+    mode_ = "static"
+    start_time = time.time()
+
+    for i in range(count):
+        bins = i + 2
+        xval.append(bins)
+
+        clfstatic = HBOSPYOD(mode=mode_, n_bins=bins, ranked=hbosranked, smoothen=smooth_)
+        clfstatic.fit(data_)
+        scoresstatic = clfstatic.decision_scores_
+        hbos_static = data_.copy()
+        hbos_static['Scores'] = scoresstatic
+        hbos_static['Class'] = labels_
+        hbos_static_sorted = hbos_static.sort_values(by=['Scores'], ascending=False)
+        fpr1, tpr1, thresholds1 = metrics.roc_curve(hbos_static_sorted['Class'], hbos_static_sorted['Scores'])
+        aucstatic = metrics.auc(fpr1, tpr1)
+        if aucstatic > maxaucstatic:
+            maxaucstatic = aucstatic
+            maxatstatic = bins
+        aucs_static.append(aucstatic)
+
+    end_time = time.time()
+    print("Time taken to run: ", dataname, end_time - start_time, "seconds.")
+
+    auto_auc_static, auto_bins_static, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sqrt")
+    br_auc, _, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "br")
+    scott_auc, _, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "scott")
+    doane_auc, _, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "doane")
+    fd_auc, _, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "fd")
+    fd_st1_auc, _, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "fd_st1")
+    fd_st2_auc, _, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "fd_st2")
+    sturges_auc, _, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sturges")
+    rice_auc, rice_bins, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "rice")
+    ten_auc, _, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, 10)
+    brval = [br_auc] * len(xval)
+    scottval = [scott_auc] * len(xval)
+    doaneval = [doane_auc] * len(xval)
+    fdval = [fd_auc] * len(xval)
+    tenval = [ten_auc] * len(xval)
+    sturgesval = [sturges_auc] * len(xval)
+    fd_st1_val = [fd_st1_auc] * len(xval)
+    fd_st2_val = [fd_st2_auc] * len(xval)
+    rice_val = [rice_auc] * len(xval)
+
+    plt.figure(figsize=[10, 8])
+
+    if mode_ == "static":
+        plt.plot(xval, aucs_static, color='blue', lw=1,
+                 label='mode: ' + mode_ + ', smoothen: ' + str(smooth_) + ', ranked: ' + str(hbosranked), zorder=10)
+        plt.plot(xval, brval, color='orange', lw=2, label="Birge Rozenblac: {0:0.4f}".format(br_auc), zorder=9)
+        plt.plot(xval, scottval, color='green', lw=2, label="scott : {0:0.4f}".format(scott_auc), zorder=9)
+        plt.plot(xval, doaneval, color='indigo', lw=2, label="doane: {0:0.4f}".format(doane_auc), zorder=9)
+
+        plt.plot(xval, fd_st2_val, color='dimgrey', lw=2, label="fd & sturges: {0:0.4f}".format(fd_st2_auc), zorder=9)
+        plt.plot(xval, fdval, color='yellow', lw=2, label="fd : {0:0.4f}".format(fd_auc), zorder=9)
+        plt.plot(xval, tenval, color='black', lw=2, label="10: {0:0.4f}".format(ten_auc), zorder=9)
+        plt.plot(xval, sturgesval, color='cyan', lw=2, label="sturges: {0:0.4f}".format(sturges_auc), zorder=9)
+        plt.plot(xval, rice_val, color='pink', lw=2,
+                 label="rice: {0:0.4f}".format(rice_auc) + "bins: {}".format(rice_bins), zorder=9)
+        plt.plot(xval, fd_st1_val, color='red', lw=2, label="combined: {0:0.4f}".format(fd_st1_auc), zorder=9)
+
+    if mode_ == "dynamic":
+        plt.plot(xval, aucs_static, color='red', lw=1, label='mode: ' + mode_ + ', ranked: ' + str(hbosranked),
+                 zorder=10)
+        plt.plot(xval, brval, color='orange', lw=2, label="Birge Rozenblac: {0:0.4f}".format(br_auc), zorder=9)
+        # plt.plot(xval, , color='green', lw=2, label=": {0:0.4f}".format(), zorder=9)
+        # plt.plot(xval, doaneval, color='indigo', lw=2, label="doane: {0:0.4f}".format(doane_auc), zorder=9)
+        plt.plot(xval, fdval, color='dimgrey', lw=2, label="fd: {0:0.4f}".format(fd_auc), zorder=9)
+        plt.plot(xval, tenval, color='green', lw=2, label="10: {0:0.4f}".format(ten_auc), zorder=9)
+
+    label_ = "n_bins= sqrt: {}".format(auto_bins_static) + " bins" + ", AUC: {0:0.4f}".format(auto_auc_static)
+    plt.scatter(auto_bins_static, auto_auc_static, color='k', s=100, marker='X', label=label_, zorder=11)
+
+    plt.xlabel('Number of Bins')
+    plt.ylabel('Area Under the Curve (AUC)')
+
+    plt.title(
+        'AUC vs. n_bins: ' + dataname + ', samples: {}'.format(samples) + ', features: {}'.format(
+            features) + '\n' + ' max AUC "' + mode_ + '": {0:0.4f}'.format(maxaucstatic) + ' at {}'.format(
+            maxatstatic) + ' bins \n')
+
+    plt.legend(loc="lower right")
+    plt.ylim(0.4, 1.1)
+    plt.grid(True)
+    # plt.text(0, -0.1, 't_static: {0:0.2f}'.format(duration)+ ' s', fontsize=12, color='black', ha='left',transform=plt.gca().transAxes)
+    # pfad=r'C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\benchmarks'
+    # pfad = r'C:\Users\david\Desktop\datasets_hbos\Harvard Dataverse\benchmarks'
+    # pfad = r'C:\Users\david\Desktop\datasets_hbos\ELKI\benchmarks'
+    # pfad = r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\benchmarks'
+    pfad = r'C:\Users\david\Desktop\datasets_hbos\Benchmarks'
+    filename = f"{pfad}\{dataname}_{mode_}.png"
+    plt.savefig(filename)
+    plt.show()
+
+    return maxatstatic
+
+
+def calc_auc_graph_static_or_dynamic(data_, labels_, count, dataname):
+    features = data_.shape[1]
+    samples = len(data_)
     print(dataname, ": current dataset")
     aucs_static = []
     maxatstatic = 0
@@ -33,20 +832,28 @@ def calc_auc_graph_static_or_dynamic(data_, orig_, count, dataname):
     maxatsmooth = 0
     maxaucsmooth = 0
     xval = []
+    xvaldyn = []
     xvalsmooth = []
     hbosranked = False
+    norm = True
     mode_ = "dynamic"
     start_time = time.time()
-    # for i in range(count):
-    for i in range(count):
+
+    for i in range(100):
         bins = i + 2
         xval.append(bins)
+        values_per_bin = round(samples * ((i + 1) / 1000))
+        # values_per_bin = i + 1
+        if values_per_bin < 1:
+            values_per_bin = 1
+        xvaldyn.append((i + 1) / 1000)
 
-        clfstatic = HBOSPYOD(mode=mode_, n_bins=bins, ranked=False)
+        clfstatic = HBOSPYOD(mode=mode_, n_bins=bins, ranked=False, samples_per_bin=values_per_bin)
         clfstatic.fit(data_)
         scoresstatic = clfstatic.decision_scores_
-        hbos_static = orig_.copy()
+        hbos_static = data_.copy()
         hbos_static['scores'] = scoresstatic
+        hbos_static['Class'] = labels_
         hbos_static_sorted = hbos_static.sort_values(by=['scores'], ascending=False)
         fpr1, tpr1, thresholds1 = metrics.roc_curve(hbos_static_sorted['Class'], hbos_static_sorted['scores'])
         aucstatic = metrics.auc(fpr1, tpr1)
@@ -55,11 +862,12 @@ def calc_auc_graph_static_or_dynamic(data_, orig_, count, dataname):
             maxatstatic = bins
         aucs_static.append(aucstatic)
 
-        clfranked = HBOSPYOD(mode=mode_, n_bins=bins, ranked=True)
+        clfranked = HBOSPYOD(mode=mode_, n_bins=bins, ranked=True, samples_per_bin=values_per_bin)
         clfranked.fit(data_)
         scoresranked = clfranked.decision_scores_
-        hbos_ranked = orig_.copy()
+        hbos_ranked = data_.copy()
         hbos_ranked['scores'] = scoresranked
+        hbos_ranked['Class'] = labels_
         hbos_ranked_sorted = hbos_ranked.sort_values(by=['scores'], ascending=False)
         fpr2, tpr2, thresholds2 = metrics.roc_curve(hbos_ranked_sorted['Class'], hbos_ranked_sorted['scores'])
         aucranked = metrics.auc(fpr2, tpr2)
@@ -74,8 +882,9 @@ def calc_auc_graph_static_or_dynamic(data_, orig_, count, dataname):
                 clfsmooth = HBOSPYOD(mode=mode_, n_bins=bins, ranked=False, smoothen=True)
                 clfsmooth.fit(data_)
                 scoressmooth = clfsmooth.decision_scores_
-                hbos_smooth = orig_.copy()
+                hbos_smooth = data_.copy()
                 hbos_smooth['scores'] = scoressmooth
+                hbos_smooth['Class'] = labels_
                 hbos_smooth_sorted = hbos_smooth.sort_values(by=['scores'], ascending=False)
                 fpr2, tpr2, thresholds2 = metrics.roc_curve(hbos_smooth_sorted['Class'], hbos_smooth_sorted['scores'])
                 aucsmooth = metrics.auc(fpr2, tpr2)
@@ -86,39 +895,53 @@ def calc_auc_graph_static_or_dynamic(data_, orig_, count, dataname):
     end_time = time.time()
     print("Time taken to run: ", dataname, end_time - start_time, "seconds.")
 
-    auto_auc_static, auto_bins_static = calc_roc_auc2(data_, orig_, mode_, hbosranked, False, "auto")
-    auto_auc_ranked, auto_bins_ranked = calc_roc_auc2(data_, orig_, mode_, True, False, "auto")
-    if mode_ == "static":
-        auto_auc_smooth, auto_bins_smooth = calc_roc_auc2(data_, orig_, mode_, hbosranked, True, "auto")
-    # xval = range(2, count + 1)
-    plt.figure(figsize=[10, 8])
-    # plt.plot(xval, aucs_static, color='b', lw=2, label='mode: ' + hbosmode + ', ranked: {}'.format(hbosranked))
-    plt.plot(xval, aucs_static, color='b', lw=1, label='mode: ' + mode_)
-    plt.plot(xval, aucs_ranked, color='r', lw=1, label='mode: ' + mode_ + ' ranked')
-    if mode_ == "static":
-        plt.plot(xvalsmooth, aucs_smooth, color='g', lw=1, label='mode: ' + mode_ + ' smooth')
+    auto_auc_static, auto_bins_static, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, False, "sqrt")
+    auto_auc_ranked, auto_bins_ranked, _ = calc_roc_auc2(data_, labels_, mode_, True, False, "sqrt")
+    # calc_auc, calc_bins = calc_roc_auc2(data_, orig_, mode_, hbosranked, False, "calc")
+    # calc_auc_ranked, calc_bins_ranked = calc_roc_auc2(data_, orig_, mode_, True, False, "calc")
+    # calc2_auc, calc2_bins = calc_roc_auc2(data_, orig_, mode_, hbosranked, False, "calc2")
+    # calc2_auc_ranked, calc2_bins_static = calc_roc_auc2(data_, orig_, mode_, True, False, "calc2")
 
-    label_ = 'n_bins= sqrt(samples) '
+    if mode_ == "static":
+        auto_auc_smooth, auto_bins_smooth, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, True, "sqrt")
+        plt.figure(figsize=[10, 8])
+        plt.plot(xval, aucs_static, color='blue', lw=1, label='mode: ' + mode_)
+        plt.plot(xval, aucs_ranked, color='midnightblue', lw=1, label='mode: ' + mode_ + ' ranked')
+        plt.plot(xvalsmooth, aucs_smooth, color='cyan', lw=1, label='mode: ' + mode_ + ' smooth')
+
+    if mode_ == "dynamic":
+        plt.figure(figsize=[10, 8])
+        plt.plot(xvaldyn, aucs_static, color='red', lw=1, label='mode: ' + mode_)
+        plt.plot(xvaldyn, aucs_ranked, color='darkred', lw=1, label='mode: ' + mode_ + ' ranked')
+
+    label_ = 'n_bins= sqrt(samples) {}'.format(auto_bins_static)
     label2_ = 'n_bins= sqrt(samples) ranked ' + mode_
     label3_ = 'n_bins= sqrt(samples) smooth ' + mode_
 
-    plt.scatter(auto_bins_static, auto_auc_static, color='k', s=100, marker='X', label=label_, zorder=10)
-    plt.scatter(auto_bins_ranked, auto_auc_ranked, color='k', s=100, marker='X', zorder=10)
     if mode_ == "static":
-        plt.scatter(auto_bins_smooth, auto_auc_smooth, color='k', s=100, marker='X', zorder=10)
-    plt.xlabel('Number of Bins')
+        # plt.scatter(auto_bins_smooth, auto_auc_smooth, color='k', s=100, marker='X', zorder=10)
+        # plt.scatter(auto_bins_static, auto_auc_static, color='k', s=100, marker='X', label=label_, zorder=10)
+        # plt.scatter(auto_bins_ranked, auto_auc_ranked, color='k', s=100, marker='X', zorder=10)
+        plt.xlabel('Number of Bins')
+    if mode_ == "dynamic":
+        # plt.scatter(auto_bins_static, auto_auc_static, color='k', s=100, marker='X', label=label_, zorder=10)
+        # plt.scatter(auto_bins_ranked, auto_auc_ranked, color='k', s=100, marker='X', zorder=10)
+        plt.xlabel('% of all samples per Bin')
+
     plt.ylabel('Area Under the Curve (AUC)')
     if mode_ == "static":
-        plt.title(
-            'AUC vs. n_bins: ' + dataname + '\n' + ' max AUC "static": {0:0.4f}'.format(maxaucstatic) + ' at {}'.format(
-                maxatstatic) + ' bins \n' + ' max AUC "ranked": {0:0.4f}'.format(maxaucranked) + ' at {}'.format(
-                maxatranked) + ' bins \n' + ' max AUC "smoothed": {0:0.4f}'.format(maxaucsmooth) + 'at {}'.format(
-                maxatsmooth) + ' bins')
+        plt.title('AUC vs. n_bins: ' + dataname + ', samples: {}'.format(samples) + ', features: {}'.format(
+            features) + '\n' + ' max AUC "static": {0:0.4f}'.format(maxaucstatic) + ' at {}'.format(
+            maxatstatic) + ' bins \n' + ' max AUC "ranked": {0:0.4f}'.format(maxaucranked) + ' at {}'.format(
+            maxatranked) + ' bins \n' + ' max AUC "smoothed": {0:0.4f}'.format(maxaucsmooth) + 'at {}'.format(
+            maxatsmooth) + ' bins')
     if mode_ == "dynamic":
         plt.title(
-            'AUC vs. n_bins ' + dataname + '\n' + ' max AUC "static": {0:0.4f}'.format(maxaucstatic) + ' at {}'.format(
+            'AUC vs. values per bin ' + dataname + ', samples: {}'.format(samples) + ', features: {}'.format(
+                features) + '\n' + ' max AUC "dynamic": {0:0.4f}'.format(maxaucstatic) + ' at {}'.format(
                 maxatstatic) + ' bins \n' + ' max AUC "ranked": {0:0.4f}'.format(maxaucranked) + ' at {}'.format(
                 maxatranked) + ' bins \n')
+
     plt.legend(loc="lower right")
     plt.ylim(0, 1.1)
     plt.grid(True)
@@ -126,7 +949,8 @@ def calc_auc_graph_static_or_dynamic(data_, orig_, count, dataname):
     # pfad=r'C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\benchmarks'
     # pfad = r'C:\Users\david\Desktop\datasets_hbos\Harvard Dataverse\benchmarks'
     # pfad = r'C:\Users\david\Desktop\datasets_hbos\ELKI\benchmarks'
-    pfad = r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\benchmarks'
+    # pfad = r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\benchmarks'
+    pfad = r'C:\Users\david\Desktop\datasets_hbos\Benchmarks'
     filename = f"{pfad}\{dataname}_{mode_}.png"
     plt.savefig(filename)
     plt.show()
@@ -134,12 +958,12 @@ def calc_auc_graph_static_or_dynamic(data_, orig_, count, dataname):
     return maxatstatic
 
 
-def calc_auc_graph(data_, orig_, count, dataname):
+def calc_auc_graph(data_, label_, count, dataname):
     print(dataname, ": current dataset")
     aucs_static = []
     maxatstatic = 0
     maxaucstatic = 0
-
+    n_bins = "sqrt"
     aucs_dynamic = []
     maxatdynamic = 0
     maxaucdynamic = 0
@@ -152,8 +976,9 @@ def calc_auc_graph(data_, orig_, count, dataname):
         clfstatic = HBOSPYOD(n_bins=bins, ranked=hbosranked)
         clfstatic.fit(data_)
         scoresstatic = clfstatic.decision_scores_
-        hbos_static = orig_.copy()
+        hbos_static = data_.copy()
         hbos_static['scores'] = scoresstatic
+        hbos_static['Class'] = label_
         hbos_static_sorted = hbos_static.sort_values(by=['scores'], ascending=False)
         fpr1, tpr1, thresholds1 = metrics.roc_curve(hbos_static_sorted['Class'], hbos_static_sorted['scores'])
         aucstatic = metrics.auc(fpr1, tpr1)
@@ -165,8 +990,9 @@ def calc_auc_graph(data_, orig_, count, dataname):
         clfdynamic = HBOSPYOD(mode="dynamic", n_bins=bins, ranked=hbosranked)
         clfdynamic.fit(data_)
         scoresdynamic = clfdynamic.decision_scores_
-        hbos_dynamic = orig_.copy()
+        hbos_dynamic = data_.copy()
         hbos_dynamic['scores'] = scoresdynamic
+        hbos_dynamic['Class'] = label_
         hbos_dynamic_sorted = hbos_dynamic.sort_values(by=['scores'], ascending=False)
         fpr2, tpr2, thresholds2 = metrics.roc_curve(hbos_dynamic_sorted['Class'], hbos_dynamic_sorted['scores'])
         aucdynamic = metrics.auc(fpr2, tpr2)
@@ -177,29 +1003,23 @@ def calc_auc_graph(data_, orig_, count, dataname):
     end_time = time.time()
     print("Time taken to run: ", dataname, end_time - start_time, "seconds.")
 
-    auto_auc_static, auto_bins_static = calc_roc_auc2(data_, orig_, "static", hbosranked, False, "auto")
-    auto_auc_dynamic, auto_bins_dynamic = calc_roc_auc2(data_, orig_, "dynamic", hbosranked, False, "auto")
-    calc_auc_static, calc_bins_static = calc_roc_auc2(data_, orig_, "static", hbosranked, False, "calc")
-    calc_auc_dynamic, calc_bins_dynamic = calc_roc_auc2(data_, orig_, "dynamic", hbosranked, False, "calc")
-    unique_auc_static, unique_bins_static = calc_roc_auc2(data_, orig_, "static", hbosranked, False, "unique")
-    unique_auc_dynamic, unique_bins_dynamic = calc_roc_auc2(data_, orig_, "dynamic", hbosranked, False, "unique")
-    calcvaldynamic = [calc_auc_dynamic] * len(xval)
-    calcvalstatic = [calc_auc_static] * len(xval)
-    uniquevaldynamic = [unique_auc_dynamic] * len(xval)
-    uniquevalstatic = [unique_auc_static] * len(xval)
+    auto_auc_static, auto_bins_static = calc_roc_auc2(data_, label_, "static", hbosranked, False, "sqrt")
+    auto_auc_dynamic, auto_bins_dynamic = calc_roc_auc2(data_, label_, "dynamic", hbosranked, False, "sqrt")
 
     # xval = range(1, count + 1)
     plt.figure(figsize=[8, 6])
     # plt.plot(xval, aucs_static, color='b', lw=2, label='mode: ' + hbosmode + ', ranked: {}'.format(hbosranked))
 
-    # plt.plot(xval, uniquevalstatic, color='g', lw=1, label="n_bins= unique static)")
     # plt.plot(xval, uniquevaldynamic, color='c', lw=1, label="n_bins= unique dynamic)")
     plt.plot(xval, aucs_static, color='b', lw=1, label='mode: static')
-    plt.plot(xval, calcvalstatic, color='c', lw=1, label="n_bins= calc static: "+ '{0:0.4f}'.format(calc_auc_static))
+    # plt.plot(xval, uniquevalstatic, color='c', lw=1, label="n_bins= unique static: "+ '{0:0.4f}'.format(unique_auc_static))
+    # plt.plot(xval, calcvalstatic, color='c', lw=1,
+    #        label="n_bins= " + n_bins + ": " + '{0:0.4f}'.format(calc_auc_static))
 
     plt.plot(xval, aucs_dynamic, color='r', lw=1, label='mode: dynamic')
-    plt.plot(xval, calcvaldynamic, color="#EDB120", lw=1, label="n_bins= calc dynamic: "+ '{0:0.4f}'.format(calc_auc_dynamic))
-
+    # plt.plot(xval, uniquevaldynamic, color='#EDB120', lw=1, label="n_bins= unique dynamic: "+ '{0:0.4f}'.format(unique_auc_dynamic))
+    # plt.plot(xval, calcvaldynamic, color="#EDB120", lw=1,
+    #         label="n_bins= " + n_bins + " dynamic: " + '{0:0.4f}'.format(calc_auc_dynamic))
 
     plt.scatter(auto_bins_static, auto_auc_static, color='k', s=100, marker='X', label='n_bins= sqrt(samples)',
                 zorder=10)
@@ -220,13 +1040,14 @@ def calc_auc_graph(data_, orig_, count, dataname):
             maxatstatic) + ' bins \n' + ' max AUC "dynamic": {0:0.4f}'.format(maxaucdynamic) + ' at {}'.format(
             maxatdynamic) + ' bins')
     plt.legend(loc="lower right")
-    plt.ylim(0, 1.1)
+    plt.ylim(0.4, 1.1)
     plt.grid(True)
     # plt.text(0, -0.1, 't_static: {0:0.2f}'.format(duration)+ ' s', fontsize=12, color='black', ha='left',transform=plt.gca().transAxes)
     # pfad=r'C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\benchmarks\static_dynamic'
-    # pfad = r'C:\Users\david\Desktop\datasets_hbos\Harvard Dataverse\benchmarks\static_dynamic'
-    # pfad= r'C:\Users\david\Desktop\datasets_hbos\ELKI\benchmarks'
-    pfad = r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\benchmarks'
+    # pfad = r'C:\Users\david\Desktop\datasets_hbos\Harvard Dataverse\benchmarks'
+    # pfad= r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\benchmarks'
+    # pfad = r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\benchmarks'
+    pfad = r'C:\Users\david\Desktop\datasets_hbos\Benchmarks'
     filename = f"{pfad}\static_dynamic_{dataname}.png"
     plt.savefig(filename)
     plt.show()
@@ -234,8 +1055,84 @@ def calc_auc_graph(data_, orig_, count, dataname):
     return maxatstatic
 
 
-def plot_explainability(id):
-    y_values = clf.get_explainability_scores(id)
+def calc_auc_new_and_old(data_, label_, count, dataname):
+    print(dataname, ": current dataset")
+    aucs_static = []
+    maxatstatic = 0
+    maxaucstatic = 0
+    n_bins = "sqrt"
+    aucs_dynamic = []
+    maxatdynamic = 0
+    maxaucdynamic = 0
+    xval = []
+    hbosranked = False
+    start_time = time.time()
+    for i in range(count):
+        bins = i + 3
+        xval.append(bins)
+        clfstatic = HBOSPYOD(n_bins=bins, ranked=hbosranked)
+        clfstatic.fit(data_)
+        scoresstatic = clfstatic.decision_scores_
+        hbos_static = data_.copy()
+        hbos_static['scores'] = scoresstatic
+        hbos_static['Class'] = label_
+        hbos_static_sorted = hbos_static.sort_values(by=['scores'], ascending=False)
+        fpr1, tpr1, thresholds1 = metrics.roc_curve(hbos_static_sorted['Class'], hbos_static_sorted['scores'])
+        aucstatic = metrics.auc(fpr1, tpr1)
+        if aucstatic > maxaucstatic:
+            maxaucstatic = aucstatic
+            maxatstatic = bins
+        aucs_static.append(aucstatic)
+
+        clfdynamic = HBOS(n_bins=bins)
+        clfdynamic.fit(data_)
+        scoresdynamic = clfdynamic.decision_scores_
+        hbos_dynamic = data_.copy()
+        hbos_dynamic['scores'] = scoresdynamic
+        hbos_dynamic['Class'] = label_
+        hbos_dynamic_sorted = hbos_dynamic.sort_values(by=['scores'], ascending=False)
+        fpr2, tpr2, thresholds2 = metrics.roc_curve(hbos_dynamic_sorted['Class'], hbos_dynamic_sorted['scores'])
+        aucdynamic = metrics.auc(fpr2, tpr2)
+        if aucdynamic > maxaucdynamic:
+            maxaucdynamic = aucdynamic
+            maxatdynamic = bins
+        aucs_dynamic.append(aucdynamic)
+    end_time = time.time()
+    print("Time taken to run: ", dataname, end_time - start_time, "seconds.")
+
+    # xval = range(1, count + 1)
+    plt.figure(figsize=[8, 6])
+    # plt.plot(xval, aucs_static, color='b', lw=2, label='mode: ' + hbosmode + ', ranked: {}'.format(hbosranked))
+
+    # plt.plot(xval, uniquevaldynamic, color='c', lw=1, label="n_bins= unique dynamic)")
+    plt.plot(xval, aucs_static, color='b', lw=1, label='mode: static')
+
+    plt.plot(xval, aucs_dynamic, color='r', lw=1, label='mode: pyod')
+
+    plt.xlabel('Number of Bins')
+    plt.ylabel('Area Under the Curve (AUC)')
+    plt.title(
+        'AUC vs. n_bins: ' + dataname + ' \n' + ' max AUC "static": {0:0.4f}'.format(maxaucstatic) + ' at {}'.format(
+            maxatstatic) + ' bins \n' + ' max AUC "dynamic": {0:0.4f}'.format(maxaucdynamic) + ' at {}'.format(
+            maxatdynamic) + ' bins')
+    plt.legend(loc="lower right")
+    plt.ylim(0.4, 1.1)
+    plt.grid(True)
+    # plt.text(0, -0.1, 't_static: {0:0.2f}'.format(duration)+ ' s', fontsize=12, color='black', ha='left',transform=plt.gca().transAxes)
+    # pfad=r'C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\benchmarks\static_dynamic'
+    # pfad = r'C:\Users\david\Desktop\datasets_hbos\Harvard Dataverse\benchmarks'
+    # pfad= r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\benchmarks'
+    # pfad = r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\benchmarks'
+    pfad = r'C:\Users\david\Desktop\datasets_hbos\Benchmarks\test'
+    filename = f"{pfad}\static_dynamic_{dataname}.png"
+    plt.savefig(filename)
+    plt.show()
+
+    return maxatstatic
+
+
+def plot_explainability(id_):
+    y_values = clf.get_explainability_scores(id_)
 
     # Labels erstellen
     labels = ['Feature: {}'.format(i + 1) for i in range(clf.n_features_)]
@@ -247,28 +1144,33 @@ def plot_explainability(id):
     plt.xlabel('score')
 
     plt.title(
-        'explainability score for sample: {}'.format(id) + ' with outlierscore = {0:0.4f}'.format(
-            clf.decision_scores_[id]))
+        'explainability score for sample: {}'.format(id_) + ' with outlierscore = {0:0.4f}'.format(
+            clf.decision_scores_[id_]))
     plt.legend(loc="lower right")
     plt.show()
 
 
-def calc_roc_auc2(data_, orig_, mode_, ranked_, smooth_, n_bins_):
+def calc_roc_auc2(data_, labels_, mode_, ranked_, smooth_, n_bins_):
     clfauc = HBOSPYOD(ranked=ranked_, mode=mode_, smoothen=smooth_, n_bins=n_bins_)
+    #clfauc = HBOS(n_bins = n_bins_)
     clfauc.fit(data_)
-    scores = clfauc.decision_scores_
-    hbos_orig = orig_
-    hbos_orig['scores'] = scores
-    hbos_orig_sorted = hbos_orig.sort_values(by=['scores'], ascending=False)
 
-    fpr, tpr, thresholds = metrics.roc_curve(hbos_orig_sorted['Class'], hbos_orig_sorted['scores'])
+    scores = clfauc.decision_scores_
+    hbos_orig = data_.copy()
+    hbos_orig['Scores'] = scores
+    hbos_orig['Class'] = labels_
+    hbos_sorted = hbos_orig.sort_values(by=['Scores'], ascending=False)
+
+    fpr, tpr, thresholds = metrics.roc_curve(hbos_sorted['Class'], hbos_sorted['Scores'])
     auc = metrics.auc(fpr, tpr)
     # auc = roc_auc_score(hbos_orig_sorted['Class'], hbos_orig_sorted['scores'])
-    return auc, clfauc.n_bins
+    patn = average_precision_score(labels_, scores)
+    n_bins_array_= clfauc.n_bins_array_
+    #n_bins_array_ = 10
+    return auc, clfauc.n_bins, n_bins_array_, patn
 
 
 def calc_roc_auc(orig_):
-    clf_name = 'HBOS'
     scores = clf.decision_scores_
     hbos_orig = orig_
     hbos_orig['scores'] = scores
@@ -279,7 +1181,7 @@ def calc_roc_auc(orig_):
     # auc = roc_auc_score(hbos_orig_sorted['Class'], hbos_orig_sorted['scores'])
 
     plt.figure(figsize=[8, 5])
-    plt.plot(fpr, tpr, color='r', lw=2, label='mode: ' + hbosmode + ', ranked: {}'.format(hbosranked))
+    plt.plot(fpr, tpr, color='r', lw=2, label='mode: ' + testhbosmode + ', ranked: {}'.format(testhbosranked))
     plt.plot([0, 1], [0, 1], color='k', lw=2, linestyle='--', label='guessing')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
@@ -296,40 +1198,46 @@ def calc_roc_auc(orig_):
 
 
 if __name__ == "__main__":
-
-    X_train, y_train = generate_data(n_train=200,n_test=100, n_features=2, contamination=0.1, random_state=42, train_only=True)
+    X_train, y_train = generate_data(n_train=200, n_test=100, n_features=2, contamination=0.1, random_state=42,
+                                     train_only=True)
     datasettest = pd.DataFrame(X_train)
     datasettest['Class'] = y_train
-    datasettestorig= datasettest.copy()
+    datasettestlabel = y_train
+    datasettestorig = datasettest.copy()
     del datasettest['Class']
 
     mat_data1 = loadmat(r"C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\annthyroid.mat")
     dataset1 = pd.DataFrame(mat_data1['X'])
     dataset1["Class"] = mat_data1['y']
+    dataset1label = mat_data1['y']
     orig1 = dataset1.copy()
     del dataset1['Class']
 
     mat_data2 = loadmat(r"C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\cardio.mat")
     dataset2 = pd.DataFrame(mat_data2['X'])
     dataset2["Class"] = mat_data2['y']
+    dataset2label = mat_data2['y']
     orig2 = dataset2.copy()
     del dataset2['Class']
 
     mat_data3 = loadmat(r"C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\cover.mat")
     dataset3 = pd.DataFrame(mat_data3['X'])
     dataset3["Class"] = mat_data3['y']
+    dataset3label = mat_data3['y']
     orig3 = dataset3.copy()
     del dataset3['Class']
 
     mat_data4 = loadmat(r"C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\letter.mat")
     dataset4 = pd.DataFrame(mat_data4['X'])
     dataset4["Class"] = mat_data4['y']
+    dataset4label = mat_data4['y']
     orig4 = dataset4.copy()
     del dataset4['Class']
 
     mat_data5 = loadmat(r"C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\glass.mat")
     dataset5 = pd.DataFrame(mat_data5['X'])
     dataset5["Class"] = mat_data5['y']
+    dataset5label = mat_data5['y']
     orig5 = dataset5.copy()
     del dataset5['Class']
 
@@ -339,50 +1247,72 @@ if __name__ == "__main__":
         labels = file['y'][:]
         labels = labels.transpose()
     dataset6["Class"] = labels
+    dataset6label = labels
     orig6 = dataset6.copy()
     del dataset6['Class']
 
     mat_data7 = loadmat(r"C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\lympho.mat")
     dataset7 = pd.DataFrame(mat_data7['X'])
     dataset7["Class"] = mat_data7['y']
+    dataset7label = mat_data7['y']
     orig7 = dataset7.copy()
     del dataset7['Class']
 
     mat_data8 = loadmat(r"C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\mammography.mat")
     dataset8 = pd.DataFrame(mat_data8['X'])
     dataset8["Class"] = mat_data8['y']
+    dataset8label = mat_data8['y']
     orig8 = dataset8.copy()
     del dataset8['Class']
 
     mat_data9 = loadmat(r"C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\mnist.mat")
     dataset9 = pd.DataFrame(mat_data9['X'])
     dataset9["Class"] = mat_data9['y']
+    dataset9label = mat_data9['y']
     orig9 = dataset9.copy()
     del dataset9['Class']
 
     mat_data10 = loadmat(r"C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\musk.mat")
     dataset10 = pd.DataFrame(mat_data10['X'])
     dataset10["Class"] = mat_data10['y']
+    dataset10label = mat_data10['y']
     orig10 = dataset10.copy()
     del dataset10['Class']
 
     mat_data11 = loadmat(r"C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\optdigits.mat")
     dataset11 = pd.DataFrame(mat_data11['X'])
     dataset11["Class"] = mat_data11['y']
+    dataset11label = mat_data11['y']
     orig11 = dataset11.copy()
     del dataset11['Class']
 
     mat_data12 = loadmat(r"C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\pendigits.mat")
     dataset12 = pd.DataFrame(mat_data12['X'])
     dataset12["Class"] = mat_data12['y']
+    dataset12label = mat_data12['y']
     orig12 = dataset12.copy()
     del dataset12['Class']
 
     dataset13 = pd.read_csv(r"C:\Users\david\Desktop\datasets\creditcard.csv")
     orig13 = dataset13.copy()
+    dataset13label = dataset13['Class']
     del dataset13['Time']
     del dataset13['Amount']
     del dataset13['Class']
+
+    mat_data16 = loadmat(r"C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\satimage-2.mat")
+    dataset16 = pd.DataFrame(mat_data16['X'])
+    dataset16["Class"] = mat_data16['y']
+    dataset16label = mat_data16['y']
+    orig16 = dataset16.copy()
+    del dataset16['Class']
+
+    mat_data15 = loadmat(r"C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\vowels.mat")
+    dataset15 = pd.DataFrame(mat_data15['X'])
+    dataset15["Class"] = mat_data15['y']
+    dataset15label = mat_data15['y']
+    orig15 = dataset15.copy()
+    del dataset15['Class']
 
     annthyroid = arff.loadarff(r'C:\Users\david\Desktop\datasets\semantic\Annthyroid\Annthyroid_02_v01.arff')
     annthyroid_df = pd.DataFrame(annthyroid[0])
@@ -393,19 +1323,14 @@ if __name__ == "__main__":
 
     dataset14 = pd.read_csv(r'C:\Users\david\Desktop\datasets\breast-cancer-unsupervised-ad.csv')
     orig14 = dataset14.copy()
+    dataset14label = dataset14['Class']
     del dataset14['Class']
-
-    annthyroid_norm = arff.loadarff(r'C:\Users\david\Desktop\datasets\semantic\Annthyroid\Annthyroid_norm_02_v01.arff')
-    annthyroid_norm_df = pd.DataFrame(annthyroid_norm[0])
-    origannthyroid_norm = annthyroid_norm_df.copy()
-    del annthyroid_norm_df['Class']
-    del annthyroid_norm_df['id']
-    origannthyroid_norm['Class'] = origannthyroid_norm['Class'].astype(int)
 
     harvard1 = pd.read_csv(r'C:\Users\david\Desktop\datasets_hbos\Harvard Dataverse\aloi-unsupervised-ad.csv',
                            header=None)
     lastcol = harvard1.columns[-1]
     harvard1.rename(columns={lastcol: 'Class'}, inplace=True)
+    harvard1label = harvard1['Class']
     harvardorig1 = harvard1.copy()
     del harvard1['Class']
 
@@ -413,6 +1338,7 @@ if __name__ == "__main__":
                            header=None)
     lastcol = harvard2.columns[-1]
     harvard2.rename(columns={lastcol: 'Class'}, inplace=True)
+    harvard2label = harvard2['Class']
     harvardorig2 = harvard2.copy()
     del harvard2['Class']
 
@@ -420,6 +1346,7 @@ if __name__ == "__main__":
                            header=None)
     lastcol = harvard3.columns[-1]
     harvard3.rename(columns={lastcol: 'Class'}, inplace=True)
+    harvard3label = harvard3['Class']
     harvardorig3 = harvard3.copy()
     del harvard3['Class']
 
@@ -427,6 +1354,7 @@ if __name__ == "__main__":
                            header=None)
     lastcol = harvard4.columns[-1]
     harvard4.rename(columns={lastcol: 'Class'}, inplace=True)
+    harvard4label = harvard4['Class']
     harvardorig4 = harvard4.copy()
     del harvard4['Class']
 
@@ -434,6 +1362,7 @@ if __name__ == "__main__":
                            header=None)
     lastcol = harvard5.columns[-1]
     harvard5.rename(columns={lastcol: 'Class'}, inplace=True)
+    harvard5label = harvard5['Class']
     harvardorig5 = harvard5.copy()
     del harvard5['Class']
 
@@ -441,6 +1370,7 @@ if __name__ == "__main__":
                            header=None)
     lastcol = harvard6.columns[-1]
     harvard6.rename(columns={lastcol: 'Class'}, inplace=True)
+    harvard6label = harvard6['Class']
     harvardorig6 = harvard6.copy()
     del harvard6['Class']
 
@@ -448,6 +1378,7 @@ if __name__ == "__main__":
                            header=None)
     lastcol = harvard7.columns[-1]
     harvard7.rename(columns={lastcol: 'Class'}, inplace=True)
+    harvard7label = harvard7['Class']
     harvardorig7 = harvard7.copy()
     del harvard7['Class']
 
@@ -455,6 +1386,7 @@ if __name__ == "__main__":
                            header=None)
     lastcol = harvard8.columns[-1]
     harvard8.rename(columns={lastcol: 'Class'}, inplace=True)
+    harvard8label = harvard8['Class']
     harvardorig8 = harvard8.copy()
     del harvard8['Class']
 
@@ -462,6 +1394,7 @@ if __name__ == "__main__":
                            header=None)
     lastcol = harvard9.columns[-1]
     harvard9.rename(columns={lastcol: 'Class'}, inplace=True)
+    harvard9label = harvard9['Class']
     harvardorig9 = harvard9.copy()
     del harvard9['Class']
 
@@ -469,6 +1402,7 @@ if __name__ == "__main__":
                             header=None)
     lastcol = harvard10.columns[-1]
     harvard10.rename(columns={lastcol: 'Class'}, inplace=True)
+    harvard10label = harvard10['Class']
     harvardorig10 = harvard10.copy()
     del harvard10['Class']
 
@@ -478,7 +1412,7 @@ if __name__ == "__main__":
     del elki1['id']
     del elki1['Class']
     elkiorig1['Class'] = elkiorig1['Class'].astype(int)
-    print(elkiorig1.shape)
+    elki1label = elkiorig1['Class']
 
     elki2, meta = arff.loadarff(r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\ALOI\ALOI_withoutdupl.arff')
     elki2 = pd.DataFrame(elki2)
@@ -486,7 +1420,7 @@ if __name__ == "__main__":
     elkiorig2['Class'] = elkiorig2['Class'].astype(int)
     del elki2['id']
     del elki2['Class']
-    print(elkiorig2.shape)
+    elki2label = elkiorig2['Class']
 
     elki3, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\Glass\Glass_withoutdupl_norm.arff')
@@ -495,7 +1429,7 @@ if __name__ == "__main__":
     elkiorig3['Class'] = elkiorig3['Class'].astype(int)
     del elki3['id']
     del elki3['Class']
-    print(elkiorig3.shape)
+    elki3label = elkiorig3['Class']
 
     elki4, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\Ionosphere\Ionosphere_withoutdupl_norm.arff')
@@ -504,7 +1438,7 @@ if __name__ == "__main__":
     elkiorig4['Class'] = elkiorig4['Class'].astype(int)
     del elki4['id']
     del elki4['Class']
-    print(elkiorig4.shape)
+    elki4label = elkiorig4['Class']
 
     elki5, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\KDDCup99\KDDCup99_catremoved.arff')
@@ -513,7 +1447,7 @@ if __name__ == "__main__":
     elkiorig5['Class'] = elkiorig5['Class'].astype(int)
     del elki5['id']
     del elki5['Class']
-    print(elkiorig5.shape)
+    elki5label = elkiorig5['Class']
 
     elki6, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\Lymphography\Lymphography_withoutdupl_catremoved.arff')
@@ -522,7 +1456,7 @@ if __name__ == "__main__":
     elkiorig6['Class'] = elkiorig6['Class'].astype(int)
     del elki6['id']
     del elki6['Class']
-    print(elkiorig6.shape)
+    elki6label = elkiorig6['Class']
 
     elki7, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\Lymphography\Lymphography_withoutdupl_norm_1ofn.arff')
@@ -531,7 +1465,7 @@ if __name__ == "__main__":
     elkiorig7['Class'] = elkiorig7['Class'].astype(int)
     del elki7['id']
     del elki7['Class']
-    print(elkiorig7.shape)
+    elki7label = elkiorig7['Class']
 
     elki8, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\PenDigits\PenDigits_withoutdupl_norm_v01.arff')
@@ -540,7 +1474,7 @@ if __name__ == "__main__":
     elkiorig8['Class'] = elkiorig8['Class'].astype(int)
     del elki8['id']
     del elki8['Class']
-    print(elkiorig8.shape)
+    elki8label = elkiorig8['Class']
 
     elki9, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\Shuttle\Shuttle_withoutdupl_v01.arff')
@@ -549,7 +1483,7 @@ if __name__ == "__main__":
     elkiorig9['Class'] = elkiorig9['Class'].astype(int)
     del elki9['id']
     del elki9['Class']
-    print(elkiorig9.shape)
+    elki9label = elkiorig9['Class']
 
     elki10, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\Waveform\Waveform_withoutdupl_v01.arff')
@@ -558,7 +1492,7 @@ if __name__ == "__main__":
     elkiorig10['Class'] = elkiorig10['Class'].astype(int)
     del elki10['id']
     del elki10['Class']
-    print(elkiorig10.shape)
+    elki10label = elkiorig10['Class']
 
     elki11, meta = arff.loadarff(r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\WBC\WBC_v01.arff')
     elki11 = pd.DataFrame(elki11)
@@ -566,7 +1500,7 @@ if __name__ == "__main__":
     elkiorig11['Class'] = elkiorig11['Class'].astype(int)
     del elki11['id']
     del elki11['Class']
-    print(elkiorig11.shape)
+    elki11label = elkiorig11['Class']
 
     elki12, meta = arff.loadarff(r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\WDBC\WDBC_withoutdupl_v01.arff')
     elki12 = pd.DataFrame(elki12)
@@ -574,7 +1508,7 @@ if __name__ == "__main__":
     elkiorig12['Class'] = elkiorig12['Class'].astype(int)
     del elki12['id']
     del elki12['Class']
-    print(elkiorig12.shape)
+    elki12label = elkiorig12['Class']
 
     elki13, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\WPBC\WPBC_withoutdupl_norm.arff')
@@ -583,7 +1517,34 @@ if __name__ == "__main__":
     elkiorig13['Class'] = elkiorig13['Class'].astype(int)
     del elki13['id']
     del elki13['Class']
-    print(elkiorig13.shape)
+    elki13label = elkiorig13['Class']
+
+    elki14, meta = arff.loadarff(
+        r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\Shuttle\Shuttle_withoutdupl_norm_v01.arff')
+    elki14 = pd.DataFrame(elki14)
+    elkiorig14 = elki14.copy()
+    elkiorig14['Class'] = elkiorig14['Class'].astype(int)
+    del elki14['id']
+    del elki14['Class']
+    elki14label = elkiorig14['Class']
+
+    elki16, meta = arff.loadarff(
+        r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\WDBC\WDBC_withoutdupl_norm_v01.arff')
+    elki16 = pd.DataFrame(elki16)
+    elkiorig16 = elki16.copy()
+    elkiorig16['Class'] = elkiorig16['Class'].astype(int)
+    del elki16['id']
+    del elki16['Class']
+    elki16label = elkiorig16['Class']
+
+    elki15, meta = arff.loadarff(
+        r'C:\Users\david\Desktop\datasets_hbos\ELKI\literature\WBC\WBC_norm_v01.arff')
+    elki15 = pd.DataFrame(elki15)
+    elkiorig15 = elki15.copy()
+    elkiorig15['Class'] = elkiorig15['Class'].astype(int)
+    del elki15['id']
+    del elki15['Class']
+    elki15label = elkiorig15['Class']
 
     elki_semantic1, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Annthyroid\Annthyroid_02_v01.arff')
@@ -592,7 +1553,7 @@ if __name__ == "__main__":
     del elki_semantic1['id']
     del elki_semantic1['Class']
     elki_semanticorig1['Class'] = elki_semanticorig1['Class'].astype(int)
-    print(elki_semanticorig1.shape)
+    elki_semantic1label = elki_semanticorig1['Class']
 
     elki_semantic2, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Arrhythmia\Arrhythmia_withoutdupl_02_v01.arff')
@@ -601,7 +1562,7 @@ if __name__ == "__main__":
     elki_semanticorig2['Class'] = elki_semanticorig2['Class'].astype(int)
     del elki_semantic2['id']
     del elki_semantic2['Class']
-    print(elki_semanticorig2.shape)
+    elki_semantic2label = elki_semanticorig2['Class']
 
     elki_semantic3, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Cardiotocography\Cardiotocography_02_v01.arff')
@@ -610,7 +1571,7 @@ if __name__ == "__main__":
     elki_semanticorig3['Class'] = elki_semanticorig3['Class'].astype(int)
     del elki_semantic3['id']
     del elki_semantic3['Class']
-    print(elki_semanticorig3.shape)
+    elki_semantic3label = elki_semanticorig3['Class']
 
     elki_semantic4, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\HeartDisease\HeartDisease_withoutdupl_02_v01.arff')
@@ -619,7 +1580,7 @@ if __name__ == "__main__":
     elki_semanticorig4['Class'] = elki_semanticorig4['Class'].astype(int)
     del elki_semantic4['id']
     del elki_semantic4['Class']
-    print(elki_semanticorig4.shape)
+    elki_semantic4label = elki_semanticorig4['Class']
 
     elki_semantic5, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Hepatitis\Hepatitis_withoutdupl_05_v01.arff')
@@ -628,7 +1589,7 @@ if __name__ == "__main__":
     elki_semanticorig5['Class'] = elki_semanticorig5['Class'].astype(int)
     del elki_semantic5['id']
     del elki_semantic5['Class']
-    print(elki_semanticorig5.shape)
+    elki_semantic5label = elki_semanticorig5['Class']
 
     elki_semantic6, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\InternetAds\InternetAds_norm_02_v01.arff')
@@ -637,7 +1598,7 @@ if __name__ == "__main__":
     elki_semanticorig6['Class'] = elki_semanticorig6['Class'].astype(int)
     del elki_semantic6['id']
     del elki_semantic6['Class']
-    print(elki_semanticorig6.shape)
+    elki_semantic6label = elki_semanticorig6['Class']
 
     elki_semantic7, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\PageBlocks\PageBlocks_02_v01.arff')
@@ -646,7 +1607,7 @@ if __name__ == "__main__":
     elki_semanticorig7['Class'] = elki_semanticorig7['Class'].astype(int)
     del elki_semantic7['id']
     del elki_semantic7['Class']
-    print(elki_semanticorig7.shape)
+    elki_semantic7label = elki_semanticorig7['Class']
 
     elki_semantic8, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Parkinson\Parkinson_withoutdupl_05_v01.arff')
@@ -655,7 +1616,7 @@ if __name__ == "__main__":
     elki_semanticorig8['Class'] = elki_semanticorig8['Class'].astype(int)
     del elki_semantic8['id']
     del elki_semantic8['Class']
-    print(elki_semanticorig8.shape)
+    elki_semantic8label = elki_semanticorig8['Class']
 
     elki_semantic9, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Pima\Pima_withoutdupl_02_v01.arff')
@@ -664,7 +1625,7 @@ if __name__ == "__main__":
     elki_semanticorig9['Class'] = elki_semanticorig9['Class'].astype(int)
     del elki_semantic9['id']
     del elki_semantic9['Class']
-    print(elki_semanticorig9.shape)
+    elki_semantic9label = elki_semanticorig9['Class']
 
     elki_semantic10, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\SpamBase\SpamBase_02_v01.arff')
@@ -673,7 +1634,7 @@ if __name__ == "__main__":
     elki_semanticorig10['Class'] = elki_semanticorig10['Class'].astype(int)
     del elki_semantic10['id']
     del elki_semantic10['Class']
-    print(elki_semanticorig10.shape)
+    elki_semantic10label = elki_semanticorig10['Class']
 
     elki_semantic11, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Stamps\Stamps_withoutdupl_02_v01.arff')
@@ -682,7 +1643,7 @@ if __name__ == "__main__":
     elki_semanticorig11['Class'] = elki_semanticorig11['Class'].astype(int)
     del elki_semantic11['id']
     del elki_semantic11['Class']
-    print(elki_semanticorig11.shape)
+    elki_semantic11label = elki_semanticorig11['Class']
 
     elki_semantic12, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Wilt\Wilt_02_v01.arff')
@@ -691,7 +1652,7 @@ if __name__ == "__main__":
     elki_semanticorig12['Class'] = elki_semanticorig12['Class'].astype(int)
     del elki_semantic12['id']
     del elki_semantic12['Class']
-    print(elki_semanticorig12.shape)
+    elki_semantic12label = elki_semanticorig12['Class']
 
     annthyroid1, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Annthyroid\Annthyroid_02_v01.arff')
@@ -700,7 +1661,7 @@ if __name__ == "__main__":
     del annthyroid1['id']
     del annthyroid1['Class']
     annthyroidorig1['Class'] = annthyroidorig1['Class'].astype(int)
-    print(annthyroidorig1.shape)
+    annthyroid1label = annthyroidorig1['Class']
 
     annthyroid2, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Annthyroid\Annthyroid_05_v01.arff')
@@ -709,7 +1670,7 @@ if __name__ == "__main__":
     annthyroidorig2['Class'] = annthyroidorig2['Class'].astype(int)
     del annthyroid2['id']
     del annthyroid2['Class']
-    print(annthyroidorig2.shape)
+    annthyroid2label = annthyroidorig2['Class']
 
     annthyroid3, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Annthyroid\Annthyroid_07.arff')
@@ -718,7 +1679,7 @@ if __name__ == "__main__":
     annthyroidorig3['Class'] = annthyroidorig3['Class'].astype(int)
     del annthyroid3['id']
     del annthyroid3['Class']
-    print(annthyroidorig3.shape)
+    annthyroid3label = annthyroidorig3['Class']
 
     annthyroid4, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Annthyroid\Annthyroid_norm_02_v01.arff')
@@ -727,7 +1688,7 @@ if __name__ == "__main__":
     annthyroidorig4['Class'] = annthyroidorig4['Class'].astype(int)
     del annthyroid4['id']
     del annthyroid4['Class']
-    print(annthyroidorig4.shape)
+    annthyroid4label = annthyroidorig4['Class']
 
     annthyroid5, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Annthyroid\Annthyroid_norm_05_v01.arff')
@@ -736,7 +1697,7 @@ if __name__ == "__main__":
     annthyroidorig5['Class'] = annthyroidorig5['Class'].astype(int)
     del annthyroid5['id']
     del annthyroid5['Class']
-    print(annthyroidorig5.shape)
+    annthyroid5label = annthyroidorig5['Class']
 
     annthyroid6, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Annthyroid\Annthyroid_norm_07.arff')
@@ -745,7 +1706,7 @@ if __name__ == "__main__":
     annthyroidorig6['Class'] = annthyroidorig6['Class'].astype(int)
     del annthyroid6['id']
     del annthyroid6['Class']
-    print(annthyroidorig6.shape)
+    annthyroid6label = annthyroidorig6['Class']
 
     annthyroid7, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Annthyroid\Annthyroid_withoutdupl_02_v01.arff')
@@ -754,7 +1715,7 @@ if __name__ == "__main__":
     annthyroidorig7['Class'] = annthyroidorig7['Class'].astype(int)
     del annthyroid7['id']
     del annthyroid7['Class']
-    print(annthyroidorig7.shape)
+    annthyroid7label = annthyroidorig7['Class']
 
     annthyroid8, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Annthyroid\Annthyroid_withoutdupl_05_v01.arff')
@@ -763,7 +1724,7 @@ if __name__ == "__main__":
     annthyroidorig8['Class'] = annthyroidorig8['Class'].astype(int)
     del annthyroid8['id']
     del annthyroid8['Class']
-    print(annthyroidorig8.shape)
+    annthyroid8label = annthyroidorig8['Class']
 
     annthyroid9, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Annthyroid\Annthyroid_withoutdupl_07.arff')
@@ -772,7 +1733,7 @@ if __name__ == "__main__":
     annthyroidorig9['Class'] = annthyroidorig9['Class'].astype(int)
     del annthyroid9['id']
     del annthyroid9['Class']
-    print(annthyroidorig9.shape)
+    annthyroid9label = annthyroidorig9['Class']
 
     annthyroid10, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Annthyroid\Annthyroid_withoutdupl_norm_02_v01.arff')
@@ -781,7 +1742,7 @@ if __name__ == "__main__":
     annthyroidorig10['Class'] = annthyroidorig10['Class'].astype(int)
     del annthyroid10['id']
     del annthyroid10['Class']
-    print(annthyroidorig10.shape)
+    annthyroid10label = annthyroidorig10['Class']
 
     annthyroid11, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Annthyroid\Annthyroid_withoutdupl_norm_05_v01.arff')
@@ -790,7 +1751,7 @@ if __name__ == "__main__":
     annthyroidorig11['Class'] = annthyroidorig11['Class'].astype(int)
     del annthyroid11['id']
     del annthyroid11['Class']
-    print(annthyroidorig11.shape)
+    annthyroid11label = annthyroidorig11['Class']
 
     annthyroid12, meta = arff.loadarff(
         r'C:\Users\david\Desktop\datasets_hbos\ELKI\semantic\semantic\Annthyroid\Annthyroid_withoutdupl_norm_07.arff')
@@ -799,111 +1760,271 @@ if __name__ == "__main__":
     annthyroidorig12['Class'] = annthyroidorig12['Class'].astype(int)
     del annthyroid12['id']
     del annthyroid12['Class']
-    print(annthyroidorig12.shape)
+    annthyroid12label = annthyroidorig12['Class']
 
     cnt = 0
 
-
-
-    # data_ = annthyroid_norm_df
-    # orig_ = origannthyroid_norm
-    data_ = dataset1
-    orig_ = orig1
     VTEST = [
 
-        (dataset1, orig1, 500, "test"),
-        (dataset2, orig2, 500, "test"),
+        (dataset2, dataset2label, 500, "test"),
 
     ]
 
     V1 = [
 
-        (dataset3, orig3, 100, "cover"),
-        (dataset4, orig4, 100, "letter"),
-        (dataset5, orig5, 100, "glass"),
-        (dataset6, orig6, 100, "http"),
-        (dataset7, orig7, 100, "lympho"),
-        (dataset8, orig8, 100, "mammography"),
-        (dataset9, orig9, 100, "mnist"),
-        (dataset10, orig10, 100, "musk"),
-        (dataset11, orig11, 100, "optdigits"),
-        (dataset12, orig12, 100, "pendigits"),
-        (dataset14, orig14, 100, "breast-cancer-unsupervised-ad")
+        (dataset3, dataset3label, 600, "cover"),
+        (dataset6, dataset6label, 800, "http"),
+        (dataset4, dataset4label, 100, "letter"),
+        (dataset5, dataset5label, 100, "glass"),
+
+        (dataset7, dataset7label, 50, "lympho"),
+        (dataset8, dataset8label, 800, "mammography"),
+        (dataset9, dataset9label, 250, "mnist"),
+        (dataset10, dataset10label, 400, "musk"),
+        (dataset11, dataset11label, 100, "optdigits"),
+        (dataset12, dataset12label, 250, "pendigits"),
+        (dataset14, dataset14label, 100, "breast-cancer-unsupervised-ad")
     ]
+
+    # (harvard1, harvardorig1, 100, "aloi-unsupervised-ad"), 0.5375 max
+    #
+
     V2 = [
-        (harvard1, harvardorig1, 100, "aloi-unsupervised-ad"),
-        (harvard2, harvardorig2, 100, "annthyroid-unsupervised-ad"),
-        (harvard3, harvardorig3, 100, "breast-cancer-unsupervised-ad"),
-        (harvard4, harvardorig4, 100, "kdd99-unsupervised-ad"),
-        (harvard5, harvardorig5, 100, "letter-unsupervised-ad"),
-        (harvard6, harvardorig6, 100, "pen-global-unsupervised-ad"),
-        (harvard7, harvardorig7, 100, "pen-local-unsupervised-ad"),
-        (harvard8, harvardorig8, 100, "satellite-unsupervised-ad"),
-        (harvard9, harvardorig9, 100, "shuttle-unsupervised-ad"),
-        (harvard10, harvardorig10, 100, "speech-unsupervised-ad"),
+        (harvard2, harvard2label, 300, "annthyroid-unsupervised-ad"),
+        (harvard3, harvard3label, 100, "breast-cancer-unsupervised-ad2"),
+        (harvard4, harvard4label, 100, "kdd99-unsupervised-ad"),
+        (harvard5, harvard5label, 100, "letter-unsupervised-ad"),
+        (harvard6, harvard6label, 250, "pen-global-unsupervised-ad"),
+        (harvard7, harvard7label, 100, "pen-local-unsupervised-ad"),
+        (harvard8, harvard8label, 100, "satellite-unsupervised-ad"),
+        (harvard9, harvard9label, 100, "shuttle-unsupervised-ad"),
+        (harvard10, harvardorig10, 100, "speech-unsupervised-ad")
     ]
 
+    #        (elki6, elki6label, 100, "Lymphography_withoutdupl_catremoved"),
+    #        (elki7, elki7label, 100, "Lymphography_withoutdupl_norm_1ofn"),
+    #   # (elki2, elkiorig2, 100, "ALOI_withoutdupl"),
     V3 = [
-        (elki1, elkiorig1, 100, "ALOI"),
-        (elki2, elkiorig2, 100, "ALOI_withoutdupl"),
-        (elki3, elkiorig3, 100, "Glass_withoutdupl_norm"),
-        (elki4, elkiorig4, 100, "Ionosphere_withoutdupl_norm"),
-        (elki5, elkiorig5, 100, "KDDCup99_catremoved"),
-        (elki6, elkiorig6, 100, "Lymphography_withoutdupl_catremoved"),
-        (elki7, elkiorig7, 100, "Lymphography_withoutdupl_norm_1ofn"),
-        (elki8, elkiorig8, 100, "PenDigits_withoutdupl_norm_v01"),
-        (elki9, elkiorig9, 100, "Shuttle_withoutdupl_v01"),
-        (elki10, elkiorig10, 100, "Waveform_withoutdupl_v01"),
-        (elki11, elkiorig11, 100, "WBC_v01"),
-        (elki12, elkiorig12, 100, "WDBC_withoutdupl_v01"),
-        (elki13, elkiorig13, 100, "WPBC_withoutdupl_norm")
+        (elki1, elki1label, 100, "ALOI"),
+
+        (elki3, elki3label, 100, "Glass_withoutdupl_norm"),
+        (elki4, elki4label, 100, "Ionosphere_withoutdupl_norm"),
+        (elki5, elki5label, 100, "KDDCup99_catremoved"),
+
+        (elki8, elki8label, 100, "PenDigits_withoutdupl_norm_v01"),
+        (elki9, elki9label, 100, "Shuttle_withoutdupl_v01"),
+        (elki10, elki10label, 100, "Waveform_withoutdupl_v01"),
+        (elki11, elki11label, 100, "WBC_v01"),
+        (elki12, elki12label, 100, "WDBC_withoutdupl_v01"),
+        (elki13, elki13label, 100, "WPBC_withoutdupl_norm")
 
     ]
 
-    # (elki_semantic6, elki_semanticorig6, 500, "InternetAds_norm_02_v01"),
+    #
     V4 = [
-        (elki_semantic1, elki_semanticorig1, 100, "Annthyroid_02_v01"),
-        (elki_semantic2, elki_semanticorig2, 100, "Arrhythmia_withoutdupl_02_v01"),
-        (elki_semantic3, elki_semanticorig3, 100, "Cardiotocography_02_v01"),
-        (elki_semantic4, elki_semanticorig4, 100, "HeartDisease_withoutdupl_02_v01"),
-        (elki_semantic5, elki_semanticorig5, 100, "Hepatitis_withoutdupl_05_v01"),
-
-        (elki_semantic7, elki_semanticorig7, 100, "PageBlocks_02_v01"),
-        (elki_semantic8, elki_semanticorig8, 100, "Parkinson_withoutdupl_05_v01"),
-        (elki_semantic9, elki_semanticorig9, 100, "Pima_withoutdupl_02_v01"),
-        (elki_semantic10, elki_semanticorig10, 100, "SpamBase_02_v01"),
-        (elki_semantic11, elki_semanticorig11, 100, "Stamps_withoutdupl_02_v01"),
-        (elki_semantic12, elki_semanticorig12, 100, "Wilt_02_v01"),
+        (elki_semantic1, elki_semantic1label, 350, "Annthyroid_02_v01"),
+        (elki_semantic2, elki_semantic2label, 250, "Arrhythmia_withoutdupl_02_v01"),
+        (elki_semantic3, elki_semantic3label, 500, "Cardiotocography_02_v01"),
+        (elki_semantic4, elki_semantic4label, 100, "HeartDisease_withoutdupl_02_v01"),
+        (elki_semantic5, elki_semantic5label, 100, "Hepatitis_withoutdupl_05_v01"),
+        (elki_semantic6, elki_semanticorig6, 500, "InternetAds_norm_02_v01"),
+        (elki_semantic7, elki_semantic7label, 100, "PageBlocks_02_v01"),
+        (elki_semantic8, elki_semantic8label, 100, "Parkinson_withoutdupl_05_v01"),
+        (elki_semantic9, elki_semantic9label, 100, "Pima_withoutdupl_02_v01"),
+        (elki_semantic10, elki_semantic10label, 100, "SpamBase_02_v01"),
+        (elki_semantic11, elki_semantic11label, 100, "Stamps_withoutdupl_02_v01")
 
     ]
 
     VAnnthyroid = [
-        (annthyroid1, annthyroidorig1, 100, "Annthyroid_02_v01"),
-        (annthyroid2, annthyroidorig2, 1500, "Annthyroid_05_v01"),
-        (annthyroid3, annthyroidorig3, 100, "Annthyroid_07"),
-        (annthyroid4, annthyroidorig4, 100, "Annthyroid_norm_02_v01"),
-        (annthyroid5, annthyroidorig5, 100, "Annthyroid_norm_05_v01"),
-        (annthyroid6, annthyroidorig6, 100, "Annthyroid_norm_07"),
-        (annthyroid7, annthyroidorig7, 100, "Annthyroid_withoutdupl_02_v01"),
-        (annthyroid8, annthyroidorig8, 100, "Annthyroid_withoutdupl_05_v01"),
-        (annthyroid9, annthyroidorig9, 100, "Annthyroid_withoutdupl_07"),
-        (annthyroid10, annthyroidorig10, 100, "Annthyroid_withoutdupl_norm_02_v01"),
-        (annthyroid11, annthyroidorig11, 100, "Annthyroid_withoutdupl_norm_05_v01"),
-        (annthyroid12, annthyroidorig12, 100, "Annthyroid_withoutdupl_norm_07"),
+        (annthyroid1, annthyroid1label, 100, "Annthyroid_02_v01"),
+        (annthyroid2, annthyroid2label, 1500, "Annthyroid_05_v01"),
+        (annthyroid3, annthyroid3label, 100, "Annthyroid_07"),
+        (annthyroid4, annthyroid4label, 100, "Annthyroid_norm_02_v01"),
+        (annthyroid5, annthyroid5label, 100, "Annthyroid_norm_05_v01"),
+        (annthyroid6, annthyroid6label, 100, "Annthyroid_norm_07"),
+        (annthyroid7, annthyroid7label, 100, "Annthyroid_withoutdupl_02_v01"),
+        (annthyroid8, annthyroid8label, 100, "Annthyroid_withoutdupl_05_v01"),
+        (annthyroid9, annthyroid9label, 100, "Annthyroid_withoutdupl_07"),
+        (annthyroid10, annthyroid10label, 100, "Annthyroid_withoutdupl_norm_02_v01"),
+        (annthyroid11, annthyroid11label, 100, "Annthyroid_withoutdupl_norm_05_v01"),
+        (annthyroid12, annthyroid12label, 100, "Annthyroid_withoutdupl_norm_07"),
 
     ]
 
     VTEST2 = [
-        (datasettest, datasettestorig, 100, "syntetischer Datensatz")
+        (datasettest, datasettestlabel, 100, "syntetischer Datensatz")
+    ]
+    VTESTBINARY = [
+        (elki_semantic6, elki_semantic6label, 10, "InternetAds_norm_02_v01"),
+    ]
+
+    # (elki5, elki5label, 100, "KDDCup99_catremoved"),
+    # (elki_semantic6, elki_semantic6label, 10, "InternetAds_norm_02_v01"),
+    # (elki_semantic3, elki_semantic3label, 500, "Cardiotocography_02_v01"),
+    # (harvard6, harvard6label, 250, "pen-global-unsupervised-ad"),
+    # (elki_semantic7, elki_semantic7label, 100, "PageBlocks_02_v01"),
+    # (elki7, elki7label, 100, "Lymphography_withoutdupl_norm_1ofn"),
+    # (elki_semantic1, elki_semantic1label, 350, "Annthyroid_02_v01"),
+    # (elki_semantic2, elki_semantic2label, 250, "Arrhythmia_withoutdupl_02_v01"),
+    # (dataset11, dataset11label, 100, "optdigits"),
+    # optdigits
+    # (dataset11, dataset11label, 100, "optdigits"),
+    #  (harvard5, harvard5label, 100, "letter-unsupervised-ad"),
+    # (elki12, elki12label, 100, "WDBC_withoutdupl_v01"),
+    VALL = [
+        (dataset3, dataset3label, 600, "cover"),
+        (dataset6, dataset6label, 800, "http"),
+        (dataset7, dataset7label, 50, "lympho"),
+        (dataset8, dataset8label, 800, "mammography"),
+
+        (dataset10, dataset10label, 400, "musk"),
+
+        (harvard3, harvard3label, 100, "breast-cancer-unsupervised-ad2"),
+        (harvard4, harvard4label, 100, "kdd99-unsupervised-ad"),
+        (harvard5, harvard5label, 100, "letter-unsupervised-ad"),
+        (harvard6, harvard6label, 250, "pen-global-unsupervised-ad"),
+        (harvard8, harvard8label, 100, "satellite-unsupervised-ad"),
+        (elki3, elki3label, 100, "Glass_withoutdupl_norm"),
+        (elki8, elki8label, 100, "PenDigits_withoutdupl_norm_v01"),
+        (elki9, elki9label, 100, "Shuttle_withoutdupl_v01"),
+        (elki10, elki10label, 100, "Waveform_withoutdupl_v01"),
+        (elki11, elki11label, 100, "WBC_v01"),
+
+        (elki_semantic2, elki_semantic2label, 250, "Arrhythmia_withoutdupl_02_v01"),
+        (elki_semantic3, elki_semantic3label, 500, "Cardiotocography_02_v01"),
+        (elki_semantic5, elki_semantic5label, 100, "Hepatitis_withoutdupl_05_v01"),
+        (elki_semantic6, elki_semantic6label, 500, "InternetAds_norm_02_v01"),
+        (elki_semantic7, elki_semantic7label, 100, "PageBlocks_02_v01"),
+        (elki_semantic8, elki_semantic8label, 100, "Parkinson_withoutdupl_05_v01"),
+        (elki_semantic9, elki_semantic9label, 100, "Pima_withoutdupl_02_v01"),
+        (elki_semantic10, elki_semantic10label, 100, "SpamBase_02_v01"),
+        (elki_semantic11, elki_semantic11label, 100, "Stamps_withoutdupl_02_v01"),
+        (dataset13, dataset13label, 100, "creditcart"),
+
+    ]
+    VGesamt = [
+        (dataset3, dataset3label, 600, "cover"),
+        (dataset6, dataset6label, 800, "http"),
+        (dataset7, dataset7label, 50, "lympho"),
+        (dataset8, dataset8label, 800, "mammography"),
+        (dataset9, dataset9label, 250, "mnist"),
+        (dataset10, dataset10label, 400, "musk"),
+        (dataset11, dataset11label, 100, "optdigits"),
+        (harvard3, harvard3label, 100, "breast-cancer-unsupervised-ad2"),
+        (harvard4, harvard4label, 100, "kdd99-unsupervised-ad"),
+        (harvard5, harvard5label, 100, "letter-unsupervised-ad"),
+        (harvard6, harvard6label, 250, "pen-global-unsupervised-ad"),
+        (harvard8, harvard8label, 100, "satellite-unsupervised-ad"),
+        (elki3, elki3label, 100, "Glass_withoutdupl_norm"),
+        (elki8, elki8label, 100, "PenDigits_withoutdupl_norm_v01"),
+        (elki9, elki9label, 100, "Shuttle_withoutdupl_v01"),
+        (elki10, elki10label, 100, "Waveform_withoutdupl_v01"),
+        (elki11, elki11label, 100, "WBC_v01"),
+        (elki12, elki12label, 100, "WDBC_withoutdupl_v01"),
+        (elki_semantic2, elki_semantic2label, 250, "Arrhythmia_withoutdupl_02_v01"),
+        (elki_semantic3, elki_semantic3label, 500, "Cardiotocography_02_v01"),
+        (elki_semantic5, elki_semantic5label, 100, "Hepatitis_withoutdupl_05_v01"),
+        (elki_semantic6, elki_semantic6label, 500, "InternetAds_norm_02_v01"),
+        (elki_semantic7, elki_semantic7label, 100, "PageBlocks_02_v01"),
+        (elki_semantic8, elki_semantic8label, 100, "Parkinson_withoutdupl_05_v01"),
+        (elki_semantic9, elki_semantic9label, 100, "Pima_withoutdupl_02_v01"),
+        (elki_semantic10, elki_semantic10label, 100, "SpamBase_02_v01"),
+        (elki_semantic11, elki_semantic11label, 100, "Stamps_withoutdupl_02_v01"),
+        (dataset13, dataset13label, 100, "creditcart"),
+
+    ]
+
+    # (dataset11, dataset11label, 100, "optdigits"),
+    # (harvard9, harvard9label, 100, "shuttle-unsupervised-ad"),
+    # (elki7, elki7label, 100, "Lymphography_withoutdupl_norm_1ofn"),
+
+    VParameter = [
+        (dataset3, dataset3label, 100, "cover"),
+        (dataset6, dataset6label, 100, "http"),
+        (dataset7, dataset7label, 100, "lympho"),
+        (dataset8, dataset8label, 100, "mammography"),
+        (dataset10, dataset10label, 100, "musk"),
+        (dataset13, dataset13label, 100, "creditcart"),
+        (dataset12, dataset12label, 100, "pendigits"),
+        (dataset15, dataset15label, 100, "vowel"),
+        (harvard3, harvard3label, 100, "breast-cancer-unsupervised-ad"),
+        (harvard6, harvard6label, 250, "pen-global-unsupervised-ad"),
+        (harvard8, harvard8label, 100, "satellite-unsupervised-ad"),
+        (elki3, elki3label, 20, "Glass_withoutdupl_norm"),
+        (elki9, elki9label, 100, "Shuttle_withoutdupl_v01"),
+        (elki11, elki11label, 100, "WBC_v01"),
+        (elki12, elki12label, 100, "WDBC_withoutdupl_v01"),
+        (elki_semantic2, elki_semantic2label, 100, "Arrhythmia_withoutdupl_02_v01"),
+        (elki_semantic3, elki_semantic3label, 100, "Cardiotocography_02_v01"),
+        (elki_semantic5, elki_semantic5label, 100, "Hepatitis_withoutdupl_05_v01"),
+        (elki_semantic8, elki_semantic8label, 100, "Parkinson_withoutdupl_05_v01"),
+        (elki_semantic9, elki_semantic9label, 100, "Pima_withoutdupl_02_v01"),
+        (elki_semantic11, elki_semantic11label, 100, "Stamps_withoutdupl_02_v01"),
+        (elki_semantic10, elki_semantic10label, 100, "SpamBase_02_v01"),
+        (harvard4, harvard4label, 100, "kdd99-unsupervised-ad")
+    ]
+
+    big = [
+        (dataset6, dataset6label, 20, "http"),
+
+    ]
+    bad = [
+        (dataset3, dataset3label, 100, "cover"),
+        (dataset6, dataset6label, 80, "http"),
+        (elki_semantic7, elki_semantic7label, 100, "PageBlocks_02_v01"),
+        (harvard6, harvard6label, 250, "pen-global-unsupervised-ad"),
+
+    ]
+    VQ = [
+        (dataset3, dataset3label, 600, "cover"),
+        (dataset6, dataset6label, 800, "http"),
+        (dataset4, dataset4label, 100, "letter"),
+        (dataset5, dataset5label, 100, "glass"),
+        (dataset7, dataset7label, 50, "lympho"),
+        (dataset8, dataset8label, 800, "mammography"),
+        (dataset9, dataset9label, 250, "mnist"),
+        (dataset10, dataset10label, 400, "musk"),
+        (dataset12, dataset12label, 250, "pendigits"),
+        (dataset14, dataset14label, 100, "breast-cancer-unsupervised-ad"),
+        (harvard4, harvard4label, 100, "kdd99-unsupervised-ad"),
+        (harvard5, harvard5label, 100, "letter-unsupervised-ad"),
+        (harvard6, harvard6label, 250, "pen-global-unsupervised-ad"),
+        (harvard7, harvard7label, 100, "pen-local-unsupervised-ad"),
+        (harvard8, harvard8label, 100, "satellite-unsupervised-ad"),
+        (elki3, elki3label, 100, "Glass_withoutdupl_norm"),
+        (elki4, elki4label, 100, "Ionosphere_withoutdupl_norm"),
+        (elki5, elki5label, 100, "KDDCup99_catremoved"),
+        (elki8, elki8label, 100, "PenDigits_withoutdupl_norm_v01"),
+        (elki9, elki9label, 100, "Shuttle_withoutdupl_v01"),
+        (elki10, elki10label, 100, "Waveform_withoutdupl_v01"),
+        (elki11, elki11label, 100, "WBC_v01"),
+        (elki12, elki12label, 100, "WDBC_withoutdupl_v01"),
+        (elki13, elki13label, 100, "WPBC_withoutdupl_norm"),
+
+        (elki_semantic2, elki_semantic2label, 250, "Arrhythmia_withoutdupl_02_v01"),
+        (elki_semantic3, elki_semantic3label, 500, "Cardiotocography_02_v01"),
+        (elki_semantic4, elki_semantic4label, 100, "HeartDisease_withoutdupl_02_v01"),
+        (elki_semantic5, elki_semantic5label, 100, "Hepatitis_withoutdupl_05_v01"),
+        (elki_semantic6, elki_semantic6label, 500, "InternetAds_norm_02_v01"),
+        (elki_semantic7, elki_semantic7label, 100, "PageBlocks_02_v01"),
+        (elki_semantic8, elki_semantic8label, 100, "Parkinson_withoutdupl_05_v01"),
+        (elki_semantic9, elki_semantic9label, 100, "Pima_withoutdupl_02_v01"),
+        (elki_semantic10, elki_semantic10label, 100, "SpamBase_02_v01"),
+        (elki_semantic11, elki_semantic11label, 100, "Stamps_withoutdupl_02_v01"),
+        (harvard1, harvard1label, 100, "aloi-unsupervised-ad"),
+        (harvard10, harvard10label, 100, "speech-unsupervised-ad")
+    ]
+
+    kd99 = [
+        (harvard2, harvard2label, 250, "Arrhythmia_withoutdupl_02_v01"),
     ]
 
     processes = []
-    # max = calc_auc_graph(data_, orig_, 500,"auto")
-    # (dataset13, orig13, 500, "creditcard"),
 
     '''start_time = time.time()
-    for data in VTEST2:
-        p = multiprocessing.Process(target=calc_auc_graph, args=data)
+    for data in VALL:
+        p = multiprocessing.Process(target=calc_auc_graph_static_or_dynamic, args=data)
         processes.append(p)
         p.start()
 
@@ -912,16 +2033,27 @@ if __name__ == "__main__":
     end_time = time.time()
     print("Time taken: ", end_time - start_time)'''
 
+    calc_average_dynamic(kd99)
 
-    hbosmode = ("dynamic")
-    hbosranked = False
+    # 620098
+    testhbosmode = "dynamic"
+    testhbosranked = False
+    clf = HBOSPYOD(mode="dynamic", samples_per_bin=310050)
+    clf.fit(harvard4)
 
-    clf = HBOSPYOD()
-    clf.set_params(n_bins="calc", smoothen=False, mode="dynamic", ranked=False, save_explainability_scores=True)
-    clf.fit(datasettest)
-    print(clf.labels_)
+    # calc_roc_auc(datasettestorig)
 
+    # print(clf.labels_)
+    # print(calc_roc_auc2(datasettest,datasettestorig,"dynamic",False,False,4))
     # calc_roc_auc(orig_)
 
     # plot_explainability(0)
 
+    alldatasets = []
+    alltitles = []
+
+    for sets in VALL:
+        alldatasets.append(sets[0])
+        alltitles.append(sets[3])
+
+    # plot_distributions(alldatasets[11], alltitles[11])
