@@ -589,7 +589,7 @@ class HBOSPYOD(BaseDetector):
                         phi_inv_alpha2 = phi_inv_alpha ** 2
                         n_bins = 4 * ((2 * n ** 2) / phi_inv_alpha2) ** (1 / 5)
 
-                samples_per_bin = np.ceil(self.n_samples_ / n_bins)
+                samples_per_bin = np.floor(self.n_samples_ / n_bins)
             else:
                 samples_per_bin = self.samples_per_bin
 
@@ -635,21 +635,18 @@ class HBOSPYOD(BaseDetector):
                         counters = np.delete(counters, -1)
                         binlast = np.delete(binlast, -2)
                         binfirst = np.delete(binfirst, -1)
-                    # elif isnominal == True:
-                    # print("test1")
 
-                elif binlast[-1] - binfirst[-1] == 0:
-                    # if there are only two bins, do not merge but increase the right edge of the
-                    # second (last) bin so that both bins have the same width
-                    if len(binfirst) == 2:
-                        binlast[1] = binlast[1] + (binfirst[1] - binfirst[0])
+                # if there are only two bins, do not merge but increase the right edge of the
+                # second (last) bin so that both bins have the same width
+                elif len(binfirst) == 2:
+                    binlast[1] = binlast[1] + (binfirst[1] - binfirst[0])
 
-                    # if there is only one bin (only one unique value in this feature for all samples)
-                    # do not merge but increase the right edge by one so that the bin with is one
-                    # otherwise the bin would have bin width zero and therefore infinite density aswell
+                # if there is only one bin (only one unique value in this feature for all samples)
+                # do not merge but increase the right edge by one so that the bin with is one
+                # otherwise the bin would have bin width zero and therefore infinite density aswell
 
-                    elif len(binfirst) == 1:
-                        binlast[-1] = binlast[-1] + 1
+                elif len(binfirst) == 1:
+                    binlast[-1] = binlast[-1] + 1
 
             # Get bin edges, use the next bins left edge as right edge, otherwise
             # there may be holes in the histogram

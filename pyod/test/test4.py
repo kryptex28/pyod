@@ -66,6 +66,14 @@ if __name__ == "__main__":
     harvardorig3 = harvard3.copy()
     del harvard3['Class']
 
+    harvard2 = pd.read_csv(r'C:\Users\david\Desktop\datasets_hbos\Harvard Dataverse\annthyroid-unsupervised-ad.csv',
+                           header=None)
+    lastcol = harvard2.columns[-1]
+    harvard2.rename(columns={lastcol: 'Class'}, inplace=True)
+    harvard2label = harvard2['Class']
+    harvardorig2 = harvard2.copy()
+    del harvard2['Class']
+
     '''c=20
     time2=0
     for i in range(c):
@@ -85,34 +93,7 @@ if __name__ == "__main__":
     # firstrow = hbos_orig["V1"]
     # firstrow = np.array(firstrow)
     #clf.set_params(smoothen=False,mode="static", n_bins="combined")
-    clf.set_params(mode="dynamic",ranked=False,n_bins=10)
-    mixed_data = mixed_data.reshape(-1, 1)
-    time1start=time.time()
-    clf.fit(mixed_data)
-    print(len(mixed_data))
-    time1end=time.time()
-    print("time 1",time1end-time1start)
-    #print(clf.score_array_)
 
-    print(mixed_data)
-    bin_edges= np.array(clf.bin_edges_array_[0])
-    bin_breite = clf.bin_width_array_[0]
-    heights= np.array(clf.hist_[0])
-    scores = clf.score_array_[0]
-    print(heights)
-    print(clf.decision_scores_)
-    #bin_positionen = np.cumsum([0] + bin_breite[:-1])
-    density = heights / bin_breite
-    print(density)
-    # Erzeuge das Histogramm
-    #plt.bar(bin_positionen, heights, width=bin_breite, align='edge', edgecolor='black', linewidth=1.5)
-    plt.bar(bin_edges[:-1], density, width=np.diff(bin_edges), align='edge', edgecolor='black')
-
-    plt.title('Histogram ')
-    plt.xlabel('Data')
-    plt.ylabel('Frequency')
-
-    plt.show()
     '''hbos_scores = clf.decision_scores_
 
     hbos_orig['hbos'] = hbos_scores
@@ -131,19 +112,19 @@ if __name__ == "__main__":
     clf2.set_params(mode="dynamic")
     # clf2.set_save_scores(True)
     time1start=time.time()
-    clf2.fit(data)
+    clf2.fit(harvard2)
     time1end=time.time()
     print("time 2",time1end-time1start)
     #rere=clf2.get_explainability_scores(0)
-    res = clf2.predict_proba(data)
+    #res = clf2.predict_proba(data)
     # print("TEST TEST TEST,", res)
     #ans = clf.predict(data)
     # print("TEST",ans[:20])
     hbos_scores2 = clf2.decision_scores_
-    hbos_orig2 = orig.copy()
+    hbos_orig2 = harvardorig2.copy()
     hbos_orig2['hbos'] = hbos_scores2
-    hbos_top1000_data2 = hbos_orig2.sort_values(by=['hbos'], ascending=False)[:1000]
-    hbos_top1000_data2[:50]
+    hbos_top1000_data2 = hbos_orig2.sort_values(by=['hbos'], ascending=False)[:10]
+
     print(hbos_top1000_data2)
     firstrow = hbos_orig["V1"]
     firstrow = np.array(firstrow)
