@@ -363,7 +363,7 @@ class TestSmoothHBOS(unittest.TestCase):
             n_train=self.n_train, n_test=self.n_test,
             contamination=self.contamination, random_state=42)
 
-        self.clf = HBOS(contamination=self.contamination,smoothen=True)
+        self.clf = HBOS(contamination=self.contamination,adjust=True)
         self.clf.fit(self.X_train)
 
     def test_parameters(self):
@@ -693,7 +693,7 @@ class TestAutoHBOS(unittest.TestCase):
             n_train=self.n_train, n_test=self.n_test,
             contamination=self.contamination, random_state=42)
 
-        self.clf = HBOS(contamination=self.contamination, n_bins="calc")
+        self.clf = HBOS(contamination=self.contamination, n_bins="auto")
         self.clf.fit(self.X_train)
 
     def test_parameters(self):
