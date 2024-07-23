@@ -1,13 +1,12 @@
 import math
 import sys
-from scipy.stats import skew
-import time
+
 
 from sklearn.utils import check_array
 import numpy as np
 from sklearn.utils.validation import check_is_fitted
 from .base import BaseDetector
-from ..utils import get_optimal_n_bins, check_parameter
+from ..utils import check_parameter
 
 
 class HBOS(BaseDetector):
@@ -55,9 +54,10 @@ class HBOS(BaseDetector):
         The number of bins.
 
     adjust : bool, optional (default=False)
-        If adjust is True, the histogram is smoothened. Instead of the bin score (number of
-        samples which would fall into a bin), the average of the bin score and the bin score of
-        the neighbour bins is taken to calculate the density. See get_bin_density_smooth()
+        If adjust is True, instead of the bin score (number of samples which would fall into
+        a bin), the average of the bin score and the bin score of
+        the neighbour bins is taken to calculate the density.
+        See get_bin_density_adjusted()
 
     save_explainability_scores : bool, optional (default=False)
         Decides for each sample, whether to save the explainability

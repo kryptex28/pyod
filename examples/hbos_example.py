@@ -11,6 +11,9 @@ from __future__ import print_function
 import os
 import sys
 
+import numpy as np
+from matplotlib import pyplot as plt, cm
+
 # temporary solution for relative imports in case pyod is not installed
 # if pyod is installed, no need to use the following line
 sys.path.append(
@@ -56,3 +59,23 @@ if __name__ == "__main__":
     # visualize the results
     visualize(clf_name, X_train, y_train, X_test, y_test, y_train_pred,
               y_test_pred, show_figure=True, save_figure=False)
+
+    id_ = 3
+    y_values, highest = clf.get_explainability_scores(id_)
+
+    print(highest)
+
+    labels = ['d {}'.format(i + 1) for i in range(clf.n_features_)]
+    colors=[]
+    for i in range (len(highest)):
+        colors.append(cm.RdYlGn_r(y_values[i] / highest[i]))
+    plt.figure(figsize=[10, 8])
+    plt.barh(np.arange(len(y_values)), y_values, color=colors, tick_label=labels)
+
+    plt.xlabel('score')
+
+    plt.title(
+        'dimension-specific scores for sample: {}'.format(id_) + ' with outlier score = {0:0.4f}'.format(
+            clf.decision_scores_[id_]))
+    plt.legend(loc="lower right")
+    plt.show()
