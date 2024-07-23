@@ -36,7 +36,7 @@ if __name__ == "__main__":
 
     # train HBOS detector
     clf_name = 'HBOS'
-    clf = HBOS()
+    clf = HBOS(mode="static", n_bins=10, adjust=True, save_explainability_scores=True)
     clf.fit(X_train)
 
     # get the prediction labels and outlier scores of the training data

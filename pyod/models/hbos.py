@@ -28,10 +28,11 @@ class HBOS(BaseDetector):
     - Static number of bins: uses a static number of bins for all features.
     - Square root: n_bins is set to the square root of the number of samples
     - different estimators can be used to estiamte the number of bins for each
-    dimension, see: https://numpy.org/doc/stable/reference/generated/numpy.histogram_bin_edges.html
+    dimension, a list of the different estimators is available at:
+    https://numpy.org/doc/stable/reference/generated/numpy.histogram_bin_edges.html
 
     For the dynamic mode, the square root option is available and the number of bins
-    can be set to a fixed number.
+    can be set to a fixed number. "auto" sets the number of bins to 101.
 
     A ranked option and an adjust option are also available.
     In the ranked option, the histogram bins get sorted by density.
@@ -70,6 +71,8 @@ class HBOS(BaseDetector):
 
     ranked : bool, optional (default=False)
         Decides if the ranked mode is used.
+        The bins get ranked according to their density score and the rank of
+        the bin is used as its new score.
 
     same_score_same_rank: bool, optional (default=False)
         "True" uses a different ranking method for the ranked mode.
@@ -96,7 +99,7 @@ class HBOS(BaseDetector):
     bin_width_array_: array of shape (n_bins, n_features)
         The bin widths of the bins, needed to calculate the density.
 
-    self.bin_id_array_ : array of shape (n_features, n_samples)
+    bin_id_array_ : array of shape (n_features, n_samples)
         Contains ids for all histograms in which bin every sample belongs to.
 
     max_values_per_feature_ : array of shape (n_features)
@@ -135,7 +138,7 @@ class HBOS(BaseDetector):
         ``threshold_`` on ``decision_scores_``.
     """
 
-    def __init__(self, mode="static", n_bins="auto", adjust=False,
+    def __init__(self, mode="dynamic", n_bins="auto", adjust=False,
                  save_explainability_scores=False, log_scale=True, ranked=False,
                  tol=0.5, contamination=0.1):
         super(HBOS, self).__init__(contamination=contamination)
@@ -191,7 +194,7 @@ class HBOS(BaseDetector):
         self.max_values_per_feature_ = np.max(X, axis=0)
 
         if self.mode == "static":
-            modes = ["fd", "doane", "scott", "sturges", "auto", "rice","sqrt"]
+            modes = ["stone","fd", "doane", "scott", "sturges", "auto", "rice","sqrt"]
             if isinstance(self.n_bins, str):
                 if self.n_bins == "sqrt":
                     self.n_bins = round(math.sqrt(self.n_samples_))
@@ -205,7 +208,7 @@ class HBOS(BaseDetector):
 
             # calculate raw density scores for every bin
             if self.adjust:
-                self.get_bin_density_adjsuted()  # (score[-i] + score[i] + score[i+1]) / 3
+                self.get_bin_density_adjsuted()
             else:
                 self.get_bin_density()
 
@@ -233,7 +236,7 @@ class HBOS(BaseDetector):
             self.create_dynamic_histograms(X)
 
             if self.adjust:
-                print("Warning: Smoothen==True is only supported in static mode and has no impact in dynamic mode.",
+                print("Warning: The adjust option is only supported in static mode and has no impact in dynamic mode.",
                       file=sys.stderr)
 
             # calculate raw density scores for every bin
@@ -247,37 +250,8 @@ class HBOS(BaseDetector):
 
             self.decision_scores_ = self.calc_hbos_scores(self.n_samples_, self.n_features_, self.bin_id_array_)
             self._process_decision_scores()
-            end_time_total = time.time()
+
             return self
-
-    @staticmethod
-    def get_st_doane(X):
-        # st_doane
-        range_data = np.ptp(X)
-        nunique = len(np.unique(X))
-        if range_data == 0:
-
-            return 1
-
-        else:
-            n = len(X)
-            nsturges = (range_data / (np.log2(n) + 1.0))
-            sg1 = np.sqrt(6.0 * (n - 2) / ((n + 1.0) * (n + 3)))
-            sigma = np.std(X)
-            doane = range_data / (1.0 + np.log2(n))
-            skewval = abs(skew(X))
-            if sigma > 0.0:
-                g1 = skewval
-                doane = range_data / (1.0 + np.log2(n) + np.log2(1.0 + np.absolute(g1) / sg1))
-
-            if skewval > 1:
-                best = doane
-            else:
-                best = nsturges
-
-            n_bins = int(np.ceil(range_data / best))
-
-            return n_bins
 
     def get_ids(self, X):
         """The internal function to calculate the ids for every histogram, in which bin
@@ -307,34 +281,8 @@ class HBOS(BaseDetector):
         for i in range(self.n_features_):
             data_ = X[:, i]
             bin_width = []
-            if self.n_bins == "br":
-                n_bins = get_optimal_n_bins(data_)
-            elif self.n_bins == "st_doane":
-                n_bins = self.get_st_doane(data_)
-            elif self.n_bins == "scott":
-                n_bins = "scott"
-            elif self.n_bins == "ten":
-                n_bins = 10
-            elif self.n_bins == "fd_st":
-                n_bins = "auto"
-            elif self.n_bins == "fd":
-                n_bins = "fd"
-            elif self.n_bins == "fd_doane":
-                n_bins = self.get_fd_doane(data_)
-            elif self.n_bins == "scott_doane":
-                skewval = abs(skew(data_))
-                if skewval < 1:
-                    n_bins = "scott"
-                else:
-                    n_bins = "doane"
-            elif self.n_bins == "doane":
-                n_bins = "doane"
-            elif self.n_bins == "sturges":
-                n_bins = "sturges"
-            elif self.n_bins == "rice":
-                n_bins = "rice"
-            else:
-                n_bins = self.n_bins
+
+            n_bins = self.n_bins
             hist, bin_edges = np.histogram(data_, bins=n_bins, density=False)
             for i in range(len(hist)):
                 bin_width.append(bin_edges[1] - bin_edges[0])
@@ -411,6 +359,7 @@ class HBOS(BaseDetector):
             # merge it with second last bin otherwise the last bin would have an infinite density
             if binlast[-1] - binfirst[-1] == 0:
                 if len(binfirst) > 2:
+
                     # only features which are not nominal get merged
                     if iscategorical == False:
                         counters[-2] = counters[-2] + counters[-1]
@@ -493,7 +442,7 @@ class HBOS(BaseDetector):
         """The internal function to calculate the raw density scores of each bin in each histogram.
         of each bin in each histogram. (bin height/width) A normalized bin width is used.
         Here the average of the bin height and the height of the neighbour bins is taken.
-        This version is used when smooth == True.
+        This version is used when adjust == True.
         Save maximum density score for every feature (needed to normalize density scores)
         see: https://dergipark.org.tr/en/pub/muglajsci/issue/78485/1252876
         """
