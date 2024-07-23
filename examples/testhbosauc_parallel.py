@@ -1,7 +1,7 @@
 import multiprocessing
 import time
 from sklearn.metrics import average_precision_score
-
+from pyod.test.testhbosold import HBOSOLD
 import h5py
 import seaborn as sns
 from sklearn import metrics
@@ -42,12 +42,6 @@ def plot_distributions(df, title):
         plt.title(f'Histogram of {column} - {title}')
         plt.show()
 
-        # Boxplot
-        plt.figure(figsize=(12, 6))
-        sns.boxplot(x=df[column])
-        plt.title(f'Boxplot of {column} - {title}')
-        plt.show()
-
 
 def calc_average_combined(args_):
     scaler = MinMaxScaler()
@@ -61,11 +55,21 @@ def calc_average_combined(args_):
     smooth_ = False
     mode_ = "static"
     n_data = len(args_)
-    print(n_data)
+    print(n_data, "lol")
     norm = False
 
-    for datatmp, labels_, _, _, in args_:
-        if norm:
+    for datatmp, labels_, a, name, in args_:
+        labels_ = pd.DataFrame(labels_)
+        value_counts = labels_.value_counts()
+
+        anzahl_einsen = value_counts.get(1, 0)
+        anzahl_nullen = value_counts.get(0, 0)
+
+        print()
+
+        print("dataset: ", name, "samples: ", len(datatmp), "features: ", datatmp.shape[1], "outlier: ", anzahl_einsen)
+
+        '''if norm:
             datanorm = scaler.fit_transform(datatmp)
             datanorm = pd.DataFrame(datanorm)
             data_ = datanorm
@@ -111,7 +115,7 @@ def calc_average_combined(args_):
     sorted_allauc = sorted(allauc, key=lambda x: x[0], reverse=True)
 
     for auc in sorted_allauc:
-        print(auc[1], ": ", round(auc[0], 4), " s:", round(auc[2], 5))
+        print(auc[1], ": ", round(auc[0], 4), " s:", round(auc[2], 5))'''
 
 
 def calc_average_static(args_):
@@ -121,87 +125,87 @@ def calc_average_static(args_):
     auto_avg = 0
     bins_auto = []
     autotime = 0
-    auto_pns=[]
+    auto_pns = []
 
     br = []
     br_avg = 0
     bins_br = []
     brtime = 0
-    br_pns=[]
+    br_pns = []
 
     scott = []
     scott_avg = 0
     bins_scott = []
     scotttime = 0
-    scott_pns=[]
+    scott_pns = []
 
     doane = []
     doane_avg = 0
     bins_doane = []
     doanetime = 0
-    doane_pns=[]
+    doane_pns = []
 
     fd = []
     fd_avg = 0
     bins_fd = []
     fdtime = 0
-    fd_pns=[]
+    fd_pns = []
 
     fd2 = []
     fd2_avg = 0
     bins_fd2 = []
     fd2time = 0
-    fd2_pns=[]
+    fd2_pns = []
 
     combined = []
     combined_avg = 0
     bins_combined = []
     combinedtime = 0
-    combined_pns=[]
+    combined_pns = []
 
     fd_st = []
     fd_st_avg = 0
     bins_fd_st = []
     fd_sttime = 0
-    fd_st_pns=[]
+    fd_st_pns = []
 
     sturges = []
     sturges_avg = 0
     bins_sturges = []
     sturgestime = 0
-    sturges_pns=[]
+    sturges_pns = []
 
     ten = []
     ten_avg = 0
     bins_ten = []
     tentime = 0
-    ten_pns=[]
+    ten_pns = []
 
     rice = []
     rice_avg = 0
     bins_rice = []
     ricetime = 0
-    rice_pns=[]
+    rice_pns = []
 
     fd_doane = []
     fd_doane_avg = 0
     bins_fd_doane = []
     fd_doanetime = 0
-    fd_doane_pns=[]
+    fd_doane_pns = []
 
     combined2 = []
     combined2_avg = 0
     bins_combined2 = []
     combined2time = 0
-    combined2_pns=[]
+    combined2_pns = []
 
     combined3 = []
     combined3_avg = 0
     bins_combined3 = []
     combined3time = 0
-    combined3_pns=[]
+    combined3_pns = []
 
-    hbosranked = False
+    hbosranked = True
     smooth_ = False
     mode_ = "static"
     n_data = len(args_)
@@ -218,7 +222,7 @@ def calc_average_static(args_):
             data_ = datatmp
         datasetnames.append(datasetname)
         starttime = time.time()
-        auto_auc, _, bins, auto_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sqrt")
+        auto_auc, _, bins, auto_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sqrt","auto")
         auto.append(auto_auc)
         auto_avg = auto_avg + auto_auc
         bins_auto.append(bins)
@@ -226,7 +230,7 @@ def calc_average_static(args_):
         auto_pns.append(auto_pn)
 
         starttime = time.time()
-        br_auc, _, bins, br_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sqrt")
+        br_auc, _, bins, br_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sqrt","auto")
         br.append(br_auc)
         br_avg = br_avg + br_auc
         bins_br.append(bins)
@@ -234,7 +238,7 @@ def calc_average_static(args_):
         br_pns.append(br_pn)
 
         starttime = time.time()
-        scott_auc, _, bins, scott_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "scott")
+        scott_auc, _, bins, scott_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "scott","auto")
         scott.append(scott_auc)
         scott_avg = scott_avg + scott_auc
         bins_scott.append(bins)
@@ -242,7 +246,7 @@ def calc_average_static(args_):
         scott_pns.append(scott_pn)
 
         starttime = time.time()
-        doane_auc, _, bins, doane_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "doane")
+        doane_auc, _, bins, doane_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "doane","auto")
         doane.append(doane_auc)
         doane_avg = doane_avg + doane_auc
         bins_doane.append(bins)
@@ -250,7 +254,7 @@ def calc_average_static(args_):
         doane_pns.append(doane_pn)
 
         starttime = time.time()
-        fd_auc, _, bins, fd_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "fd")
+        fd_auc, _, bins, fd_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "fd","auto")
         fd.append(fd_auc)
         fd_avg = fd_avg + fd_auc
         bins_fd.append(bins)
@@ -258,7 +262,7 @@ def calc_average_static(args_):
         fd_pns.append(fd_pn)
 
         starttime = time.time()
-        fd2_auc, _, bins, fd2_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "fd2")
+        fd2_auc, _, bins, fd2_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "fd","auto")
         fd2.append(fd2_auc)
         fd2_avg = fd2_avg + fd2_auc
         bins_fd2.append(bins)
@@ -266,7 +270,7 @@ def calc_average_static(args_):
         fd2_pns.append(fd2_pn)
 
         starttime = time.time()
-        combined_auc, _, bins, combined_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "combined")
+        combined_auc, _, bins, combined_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sqrt","auto")
         combined.append(combined_auc)
         combined_avg = combined_avg + combined_auc
         bins_combined.append(bins)
@@ -274,7 +278,7 @@ def calc_average_static(args_):
         combined_pns.append(combined_pn)
 
         starttime = time.time()
-        fd_st_auc, _, bins, fd_st_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "fd_st")
+        fd_st_auc, _, bins, fd_st_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "fd_st","auto")
         fd_st.append(fd_st_auc)
         fd_st_avg = fd_st_avg + fd_st_auc
         bins_fd_st.append(bins)
@@ -282,7 +286,7 @@ def calc_average_static(args_):
         fd_st_pns.append(fd_st_pn)
 
         starttime = time.time()
-        sturges_auc, _, bins, sturges_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sturges")
+        sturges_auc, _, bins, sturges_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sturges","auto")
         sturges.append(sturges_auc)
         sturges_avg = sturges_avg + sturges_auc
         bins_sturges.append(bins)
@@ -290,7 +294,7 @@ def calc_average_static(args_):
         sturges_pns.append(sturges_pn)
 
         starttime = time.time()
-        ten_auc, _, bins, ten_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, 10)
+        ten_auc, _, bins, ten_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "ten","auto")
         ten.append(ten_auc)
         ten_avg = ten_avg + ten_auc
         bins_ten.append(bins)
@@ -298,7 +302,7 @@ def calc_average_static(args_):
         ten_pns.append(ten_pn)
 
         starttime = time.time()
-        rice_auc, _, bins, rice_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "rice")
+        rice_auc, _, bins, rice_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "rice","auto")
         rice.append(rice_auc)
         rice_avg = rice_avg + rice_auc
         bins_rice.append(bins)
@@ -306,7 +310,7 @@ def calc_average_static(args_):
         rice_pns.append(rice_pn)
 
         starttime = time.time()
-        fd_doane_auc, _, bins, fd_doane_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "fd_doane")
+        fd_doane_auc, _, bins, fd_doane_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "scott_doane","auto")
         fd_doane.append(fd_doane_auc)
         fd_doane_avg = fd_doane_avg + fd_doane_auc
         bins_fd_doane.append(bins)
@@ -314,7 +318,7 @@ def calc_average_static(args_):
         fd_doane_pns.append(fd_doane_pn)
 
         starttime = time.time()
-        combined2_auc, _, bins, combined2_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "st_doane")
+        combined2_auc, _, bins, combined2_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "st_doane","auto")
         combined2.append(combined2_auc)
         combined2_avg = combined2_avg + combined2_auc
         bins_combined2.append(bins)
@@ -322,7 +326,7 @@ def calc_average_static(args_):
         combined2_pns.append(combined2_pn)
 
         starttime = time.time()
-        combined3_auc, _, bins, combined3_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "combined3")
+        combined3_auc, _, bins, combined3_pn = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sqrt","auto")
         combined3.append(combined3_auc)
         combined3_avg = combined3_avg + combined3_auc
         bins_combined3.append(bins)
@@ -337,14 +341,14 @@ def calc_average_static(args_):
     doane_avg = doane_avg / n_data
     fd_avg = fd_avg / n_data
     fd2_avg = fd2_avg / n_data
-    combined_avg = combined_avg / n_data
+    # combined_avg = combined_avg / n_data
     fd_st_avg = fd_st_avg / n_data
     sturges_avg = sturges_avg / n_data
     ten_avg = ten_avg / n_data
     rice_avg = rice_avg / n_data
     fd_doane_avg = fd_doane_avg / n_data
     combined2_avg = combined2_avg / n_data
-    combined3_avg = combined3_avg / n_data
+    # combined3_avg = combined3_avg / n_data
 
     auto_avg_pn = np.mean(auto_pns)
     br_avg_pn = np.mean(br_pns)
@@ -352,14 +356,14 @@ def calc_average_static(args_):
     doane_avg_pn = np.mean(doane_pns)
     fd_avg_pn = np.mean(fd_pns)
     fd2_avg_pn = np.mean(fd2_pns)
-    combined_avg_pn = np.mean(combined_pns)
+    # combined_avg_pn = np.mean(combined_pns)
     fd_st_avg_pn = np.mean(fd_st_pns)
     sturges_avg_pn = np.mean(sturges_pns)
     ten_avg_pn = np.mean(ten_pns)
     rice_avg_pn = np.mean(rice_pns)
     fd_doane_avg_pn = np.mean(fd_doane_pns)
     combined2_avg_pn = np.mean(combined2_pns)
-    combined3_avg_pn = np.mean(combined3_pns)
+    # combined3_avg_pn = np.mean(combined3_pns)
 
     '''auto_var=np.var(auto)
     br_var = np.var(br)
@@ -378,14 +382,14 @@ def calc_average_static(args_):
     doane_var = np.std(doane)
     fd_var = np.std(fd)
     fd2_var = np.std(fd2)
-    combined_var = np.std(combined)
+    # combined_var = np.std(combined)
     fd_st_var = np.std(fd_st)
     sturges_var = np.std(sturges)
     ten_var = np.std(ten)
     rice_var = np.std(rice)
-    fd_doane_var = np.std(doane)
+    fd_doane_var = np.std(fd_doane)
     combined2_var = np.std(combined2)
-    combined3_var = np.std(combined3)
+    # combined3_var = np.std(combined3)
 
     allauc = []
     allauc.append([(fd_avg), "fd", fd_var, fdtime])
@@ -393,15 +397,15 @@ def calc_average_static(args_):
     allauc.append([(br_avg), "br", br_var, brtime])
     allauc.append([(auto_avg), "sqrt", auto_var, autotime])
     allauc.append([(fd_st_avg), "fd_st", fd_st_var, fd_sttime])
-    allauc.append([(fd_doane_avg), "fd_doane", fd_doane_var, fd_doanetime])
+    allauc.append([(fd_doane_avg), "scott_doane", fd_doane_var, fd_doanetime])
     allauc.append([(scott_avg), "scott", scott_var, scotttime])
-    allauc.append([(combined_avg), "combined", combined_var, combinedtime])
+    # allauc.append([(combined_avg), "combined", combined_var, combinedtime])
     allauc.append([(rice_avg), "rice", rice_var, ricetime])
     allauc.append([(ten_avg), "ten", ten_var, tentime])
     allauc.append([(doane_avg), "doane", doane_var, doanetime])
     allauc.append([(sturges_avg), "sturges", sturges_var, sturgestime])
     allauc.append([(combined2_avg), "st_doane", combined2_var, combined2time])
-    allauc.append([(combined3_avg), "combined3", combined3_var, combined3time])
+    # allauc.append([(combined3_avg), "combined3", combined3_var, combined3time])
 
     allpn = []
     allpn.append([(fd_avg_pn), "fd"])
@@ -409,15 +413,15 @@ def calc_average_static(args_):
     allpn.append([(br_avg_pn), "br"])
     allpn.append([(auto_avg_pn), "sqrt"])
     allpn.append([(fd_st_avg_pn), "fd_st"])
-    allpn.append([(fd_doane_avg_pn), "fd_doane"])
+    allpn.append([(fd_doane_avg_pn), "scott_doane"])
     allpn.append([(scott_avg_pn), "scott"])
-    allpn.append([(combined_avg_pn), "combined"])
-    allpn.append([(rice_avg_pn), "rice" ])
+    # allpn.append([(combined_avg_pn), "combined"])
+    allpn.append([(rice_avg_pn), "rice"])
     allpn.append([(ten_avg_pn), "ten"])
     allpn.append([(doane_avg_pn), "doane"])
     allpn.append([(sturges_avg_pn), "sturges"])
     allpn.append([(combined2_avg_pn), "st_doane"])
-    allpn.append([(combined3_avg_pn), "combined3"])
+    # allpn.append([(combined3_avg_pn), "combined3"])
 
     for i in range(n_data):
         print(args_[i][3], ", samples: ", len(args_[i][0]), " features: ", args_[i][0].shape[1])
@@ -427,11 +431,11 @@ def calc_average_static(args_):
         print("sturges", "  (AUC): ", round(sturges[i], 5), bins_sturges[i])
         print("doane", "    (AUC): ", round(doane[i], 5), bins_doane[i])
         print("fd", "       (AUC): ", round(fd[i], 5), bins_fd[i])
-        print("fd2", "      (AUC): ", round(fd2[i], 5), bins_fd2[i])
-        print("combined", " (AUC): ", round(combined[i], 5), bins_combined[i])
-        print("combined3", "(AUC): ", round(combined3[i], 5), bins_combined3[i])
-        print("st_doane ", "(AUC): ", round(combined2[i], 5), bins_combined2[i])
-        print("fd_doane", " (AUC): ", round(fd_doane[i], 5), bins_fd_doane[i])
+        #print("fd2", "      (AUC): ", round(fd2[i], 5), bins_fd2[i])
+        # print("combined", " (AUC): ", round(combined[i], 5), bins_combined[i])
+        # print("combined3", "(AUC): ", round(combined3[i], 5), bins_combined3[i])
+        #print("st_doane ", "(AUC): ", round(combined2[i], 5), bins_combined2[i])
+        print("scott_doane", " (AUC): ", round(fd_doane[i], 5), bins_fd_doane[i])
         print("fd_st", "    (AUC): ", round(fd_st[i], 5), bins_fd_st[i])
         print("ten", "      (AUC): ", round(ten[i], 5), bins_ten[i])
         print("sqrt", "     (AUC): ", round(auto[i], 5), bins_auto[i])
@@ -480,18 +484,18 @@ def calc_average_static(args_):
     fd_st_list = [round(num, 4) for num in fd_st]
     fd_doane_list = [round(num, 4) for num in fd_doane]
     scott_list = [round(num, 4) for num in scott]
-    combined_list = [round(num, 4) for num in combined]
+    # combined_list = [round(num, 4) for num in combined]
     rice_list = [round(num, 4) for num in rice]
     ten_list = [round(num, 4) for num in ten]
     doane_list = [round(num, 4) for num in doane]
     sturges_list = [round(num, 4) for num in sturges]
     st_doane_list = [round(num, 4) for num in combined2]
-    combined3_list = [round(num, 4) for num in combined3]
+    # combined3_list = [round(num, 4) for num in combined3]
 
     exceldata = []
-    for dname, fd, fdmin2, br, sqrt, fd_st, fd_doane, scott, combined, rice, ten, doane, sturges, st_doane, combined3 in zip(
-            datasetnames, fd_list, fdmin2_list, br_list, sqrt_list, fd_st_list, fd_doane_list, scott_list,
-            combined_list, rice_list, ten_list, doane_list, sturges_list, st_doane_list, combined3_list):
+    for dname, fd, fdmin2, br, sqrt, fd_st, fd_doane, scott, rice, ten, doane, sturges, st_doane in zip(
+            datasetnames, fd_list, fdmin2_list, br_list, sqrt_list, fd_st_list, fd_doane_list, scott_list
+            , rice_list, ten_list, doane_list, sturges_list, st_doane_list):
         exceldata.append(
             [dname, fd, fdmin2, br, sqrt, fd_st, fd_doane, scott, combined, rice, ten, doane, sturges, st_doane,
              combined3])
@@ -525,6 +529,187 @@ def calc_average_static(args_):
     print(sturges_avg,"struges")
     print(ten_avg,"ten")
     print("time: ", endtime-start_time)'''
+
+
+def plot_boxplot(args_):
+    estimators_ = [1,2]
+
+    mode_ = "static"
+    hbosranked= False
+    smooth_= False
+    auc_values=[]
+    test=1
+    dataset_names=[]
+    print(len(args_))
+
+    for estimator_ in estimators_:
+        estimator_aucs=[]
+
+        for datatmp, labels_, _, datasetname in args_:
+
+            print("name: ", datasetname, " N: ", len(datatmp), "features: ", datatmp.shape[1], "outlier: ",  np.sum(labels_ == 1))
+
+            if estimator_==1:
+                estimator_="fd_st"
+                mode_ = "static"
+            elif estimator_ ==2:
+                estimator_ = 101
+                mode_ = "dynamic"
+
+
+
+            auc, _, bins, _ = calc_roc_auc2(datatmp, labels_, mode_, hbosranked, smooth_, estimator_,test)
+            estimator_aucs.append(auc)
+        auc_values.append(estimator_aucs)
+    estimators = estimators_
+    estimator_names = estimators
+    for datatmp, labels_, _, datasetname in args_:
+        dataset_names.append(datasetname)
+
+
+
+
+    # DataFrame erstellen
+    data = {
+        "model": np.repeat(estimators, [len(auc) for auc in auc_values]),
+        "AUC": [auc for sublist in auc_values for auc in sublist]
+    }
+
+    df = pd.DataFrame(data)
+
+    # Boxplot und Stripplot erstellen
+    plt.figure(figsize=(12, 6))
+    ax = sns.boxplot(data=df, x="model", y="AUC", boxprops={'alpha': 0.4}, dodge=False)
+    sns.stripplot(data=df, x="model", y="AUC", hue="model", dodge=False, palette="deep", ax=ax)
+
+
+
+    # Plot anzeigen
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+
+    plt.show()
+
+    medians = df.groupby('model')['AUC'].median()
+    means = df.groupby('model')['AUC'].mean()
+    std_devs = df.groupby('model')['AUC'].std(ddof=0)
+
+    # In ein DataFrame umwandeln, wobei jede Spalte einen Estimator darstellt
+    df2 = pd.DataFrame(np.round(auc_values,4)).transpose()
+    df2.columns = estimators
+    df2.insert(0, 'Datasets', dataset_names)
+
+
+
+
+    avg_aucs2  = np.mean(auc_values, axis=1)
+    avg_std2  = np.std(auc_values, axis=1)
+    new_row = ['Average AUC'] + np.round(avg_aucs2,4).tolist()
+    # Append the new row
+    df2.loc[len(df2)] = new_row
+
+    new_row = ['Standard Deviation'] + np.round(avg_std2,4).tolist()
+    # Append the new row
+    df2.loc[len(df2)] = new_row
+
+
+    # Excel-Datei speichern
+    df2.to_excel("auc_values.xlsx", index=False)
+
+
+
+    # Ausgabe der Ergebnisse
+    print("Median AUC Werte für jeden Schätzer:")
+    print(medians.sort_values(ascending=False))
+
+    print("\nDurchschnittliche AUC Werte für jeden Schätzer:")
+    print(means.sort_values(ascending=False))
+
+    print("\nStandardabweichung der AUC Werte für jeden Schätzer:")
+    print(std_devs.sort_values(ascending=True))
+
+    # Erstellen des Boxplots und der Punkte
+    for i, dataset_name in enumerate(dataset_names):
+        # Neue Figur für jeden Datensatz erstellen
+        plt.figure(figsize=(10, 6))
+
+        dataset_auc = [auc_values[j][i] for j in range(len(estimator_names))]
+
+        # Boxplot für den aktuellen Datensatz
+        sns.boxplot(data=dataset_auc, palette="Set3")
+
+        # Punkte für die AUC-Werte der Estimatoren
+        for j, estimator_name in enumerate(estimator_names):
+            y = auc_values[j][i]
+            x = np.random.normal(j + 1, 0.04, size=1)  # Zufällige X-Position für die Punkte
+            plt.plot(x, y, marker='o', markersize=8, color='black', alpha=0.7)  # Alle Punkte in Schwarz
+
+
+        # Achsenbeschriftungen und Titel
+        plt.xlabel("model")
+        plt.ylabel("AUC")
+        # X-Achsenbeschriftungen setzen
+        plt.xticks(range(1, len(estimator_names) + 1), estimator_names)
+        plt.ylim(0.5, 1.1)
+        # Bild speichern oder anzeigen
+        plt.tight_layout()
+        plt.show()  # Anzeigen (kann auch auskommentiert werden, wenn nur gespeichert werden soll)'''
+
+def calc_average_dynamic2(args_):
+    all_aucs = []
+    all_aucsranked=[]
+    all_tupel = []
+    datasetnames = []
+    hbosranked = False
+    xval=[]
+    yval=[]
+    xvalranked =[]
+    yvalranked =[]
+    smooth_ = False
+    mode_ = "dynamic"
+    n_data = len(args_)
+    print(n_data)
+
+    for i in range(199):
+        bins_ = i+2
+        xval.append(bins_)
+        print(bins_)
+        aucs = []
+        aucsranked=[]
+        for datatmp, labels_, _, datasetname in args_:
+
+
+            data_ = datatmp
+            datasetnames.append(datasetname)
+            auto_auc, _, bins, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, bins_,"auto")
+            aucs.append(auto_auc)
+
+            auto_auc_ranked, _, bins, _ = calc_roc_auc2(data_, labels_, mode_, True, smooth_, bins_,"auto")
+            aucsranked.append(auto_auc_ranked)
+
+        value = round(np.mean(aucs), 4)
+        valueranked = round(np.mean(aucsranked), 4)
+        std = round(np.std(aucs), 4)
+        tupel = (value, std, bins_)
+        all_tupel.append(tupel)
+        all_aucs.append(aucs)
+        all_aucsranked.append(aucsranked)
+        yval.append(value)
+        yvalranked.append(valueranked)
+
+    plt.figure(figsize=[8, 6])
+    plt.plot(xval, yval, color='r', lw=1, label='HBOS (dynamic mode)')
+    plt.plot(xval, yvalranked, color='darkred', lw=1, label='HBOS (dynamic mode,ranked)')
+
+
+    plt.xlabel('number of bins')
+    plt.ylabel('average AUC')
+    plt.legend(loc="lower right")
+    plt.ylim(0.4, 1.1)
+    plt.grid(True)
+    plt.show()
+    sortierte_tupel = sorted(all_tupel, key=lambda x: x[0])
+    print(sortierte_tupel)
 
 
 def calc_average_dynamic(args_):
@@ -563,31 +748,26 @@ def calc_average_dynamic(args_):
 
     datasetnames = []
     hbosranked = False
-    norm = False
+
     smooth_ = False
     mode_ = "dynamic"
     n_data = len(args_)
     print(n_data)
 
     for datatmp, labels_, _, datasetname in args_:
-        if norm:
-            datanorm = scaler.fit_transform(datatmp)
-            datanorm = pd.DataFrame(datanorm)
-            data_ = datanorm
-        else:
-            data_ = datatmp
+        data_ = datatmp
 
         datasetnames.append(datasetname)
         print(datasetname)
         starttime = time.time()
-        auto_auc, _, bins,_ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sqrt")
+        auto_auc, _, bins, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "sqrt","auto")
         auto.append(auto_auc)
         auto_avg = auto_avg + auto_auc
         bins_auto.append(bins)
         autotime = autotime + (time.time() - starttime)
 
         starttime = time.time()
-        unique_auc, _, bins,_ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, 100)
+        unique_auc, _, bins, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, 49,"auto")
         unique.append(unique_auc)
         unique_avg = unique_avg + unique_auc
         bins_unique.append(bins)
@@ -595,39 +775,39 @@ def calc_average_dynamic(args_):
 
         number = 200
         starttime = time.time()
-        br_auc, _, bins,_ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, 200)
+        br_auc, _, bins, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, 101,"auto")
         br.append(br_auc)
         br_avg = br_avg + br_auc
         bins_br.append(bins)
         brtime = brtime + (time.time() - starttime)
 
         starttime = time.time()
-        fd_st1_auc, _, bins,_ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "m1")
+        fd_st1_auc, _, bins, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "m1","auto")
         fd_st1.append(fd_st1_auc)
         fd_st1_avg = fd_st1_avg + fd_st1_auc
         bins_fd_st1.append(bins)
         fd_st1time = fd_st1time + (time.time() - starttime)
 
         starttime = time.time()
-        ten_auc, _, bins,_ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "ten")
+        ten_auc, _, bins, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "ten","auto")
         ten.append(ten_auc)
         ten_avg = ten_avg + ten_auc
         bins_ten.append(bins)
         tentime = tentime + (time.time() - starttime)
 
         starttime = time.time()
-        doane_auc, _, bins,_ = calc_roc_auc2(data_, labels_, mode_, hbosranked, smooth_, "m2")
+        doane_auc, _, bins, _ = calc_roc_auc2(data_, labels_, "static", hbosranked, smooth_, "st_doane","auto")
         doane.append(doane_auc)
         doane_avg = doane_avg + doane_auc
         bins_doane.append(bins)
         doanetime = doanetime + (time.time() - starttime)
 
-    auto_avg = auto_avg / n_data
-    br_avg = br_avg / n_data
-    unique_avg = unique_avg / n_data
-    fd_st1_avg = fd_st1_avg / n_data
-    doane_avg = doane_avg / n_data
-    ten_avg = ten_avg / n_data
+    auto_avg = np.mean(auto)
+    br_avg = np.mean(br)
+    unique_avg = np.mean(unique)
+    fd_st1_avg = np.mean(fd_st1)
+    doane_avg = np.mean(doane)
+    ten_avg = np.mean(ten)
 
     auto_var = np.std(auto)
     br_var = np.std(br)
@@ -637,25 +817,25 @@ def calc_average_dynamic(args_):
     unique_var = np.std(unique)
 
     allauc = []
-    allauc.append([(unique_avg), "100", unique_var, uniquetime])
+    allauc.append([(unique_avg), "49", unique_var, uniquetime])
     allauc.append([(auto_avg), "sqrt", auto_var, autotime])
-    allauc.append([(br_avg), "200", br_var, brtime])
-    allauc.append([(doane_avg), "m2", doane_var, doanetime])
+    allauc.append([(br_avg), "101", br_var, brtime])
+    allauc.append([(doane_avg), "st_doane_static", doane_var, doanetime])
     allauc.append([(fd_st1_avg), "m1", combined_var, fd_st1time])
     allauc.append([(ten_avg), "ten", ten_var, tentime])
 
     for i in range(n_data):
         print(args_[i][3], ", samples: ", len(args_[i][0]), " features: ", args_[i][0].shape[1])
 
-        print("m2", "  (AUC): ", round(doane[i], 5), bins_doane[i])
+        print("st_doane_static", "  (AUC): ", round(doane[i], 5), bins_doane[i])
 
         print("m1", "  (AUC): ", round(fd_st1[i], 5), bins_fd_st1[i])
 
         print("sqrt", "    (AUC): ", round(auto[i], 5), bins_auto[i])
 
-        print("100", "     (AUC): ", round(unique[i], 5), bins_unique[i])
+        print("49", "     (AUC): ", round(unique[i], 5), bins_unique[i])
 
-        print("200", "     (AUC): ", round(br[i], 5), bins_br[i])
+        print("101", "     (AUC): ", round(br[i], 5), bins_br[i])
 
         print("-------------------------------------------------")
 
@@ -726,7 +906,7 @@ def calc_auc_graph_static_or_dynamic_2(datatmp, labels_, count, dataname):
         bins = i + 2
         xval.append(bins)
 
-        clfstatic = HBOSPYOD(mode=mode_, n_bins=bins, ranked=hbosranked, smoothen=smooth_)
+        clfstatic = HBOSPYOD(mode=mode_, n_bins=bins, ranked=hbosranked, adjust=smooth_)
         clfstatic.fit(data_)
         scoresstatic = clfstatic.decision_scores_
         hbos_static = data_.copy()
@@ -835,20 +1015,16 @@ def calc_auc_graph_static_or_dynamic(data_, labels_, count, dataname):
     xvaldyn = []
     xvalsmooth = []
     hbosranked = False
-    norm = True
+    norm = False
     mode_ = "dynamic"
     start_time = time.time()
 
-    for i in range(100):
+    for i in range(200):
         bins = i + 2
         xval.append(bins)
-        values_per_bin = round(samples * ((i + 1) / 1000))
-        # values_per_bin = i + 1
-        if values_per_bin < 1:
-            values_per_bin = 1
-        xvaldyn.append((i + 1) / 1000)
+        xvaldyn.append(bins)
 
-        clfstatic = HBOSPYOD(mode=mode_, n_bins=bins, ranked=False, samples_per_bin=values_per_bin)
+        clfstatic = HBOSPYOD(mode=mode_, n_bins=bins, ranked=False)
         clfstatic.fit(data_)
         scoresstatic = clfstatic.decision_scores_
         hbos_static = data_.copy()
@@ -862,7 +1038,7 @@ def calc_auc_graph_static_or_dynamic(data_, labels_, count, dataname):
             maxatstatic = bins
         aucs_static.append(aucstatic)
 
-        clfranked = HBOSPYOD(mode=mode_, n_bins=bins, ranked=True, samples_per_bin=values_per_bin)
+        clfranked = HBOSPYOD(mode=mode_, n_bins=bins, ranked=True)
         clfranked.fit(data_)
         scoresranked = clfranked.decision_scores_
         hbos_ranked = data_.copy()
@@ -879,7 +1055,7 @@ def calc_auc_graph_static_or_dynamic(data_, labels_, count, dataname):
         if mode_ == "static":
             if bins > 2:
                 xvalsmooth.append(bins)
-                clfsmooth = HBOSPYOD(mode=mode_, n_bins=bins, ranked=False, smoothen=True)
+                clfsmooth = HBOSPYOD(mode=mode_, n_bins=bins, ranked=False, adjust=True)
                 clfsmooth.fit(data_)
                 scoressmooth = clfsmooth.decision_scores_
                 hbos_smooth = data_.copy()
@@ -895,15 +1071,15 @@ def calc_auc_graph_static_or_dynamic(data_, labels_, count, dataname):
     end_time = time.time()
     print("Time taken to run: ", dataname, end_time - start_time, "seconds.")
 
-    auto_auc_static, auto_bins_static, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, False, "sqrt")
-    auto_auc_ranked, auto_bins_ranked, _ = calc_roc_auc2(data_, labels_, mode_, True, False, "sqrt")
+    #auto_auc_static, auto_bins_static, _, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, False, "sqrt")
+    #auto_auc_ranked, auto_bins_ranked, _ ,_= calc_roc_auc2(data_, labels_, mode_, True, False, "sqrt")
     # calc_auc, calc_bins = calc_roc_auc2(data_, orig_, mode_, hbosranked, False, "calc")
     # calc_auc_ranked, calc_bins_ranked = calc_roc_auc2(data_, orig_, mode_, True, False, "calc")
     # calc2_auc, calc2_bins = calc_roc_auc2(data_, orig_, mode_, hbosranked, False, "calc2")
     # calc2_auc_ranked, calc2_bins_static = calc_roc_auc2(data_, orig_, mode_, True, False, "calc2")
 
     if mode_ == "static":
-        auto_auc_smooth, auto_bins_smooth, _ = calc_roc_auc2(data_, labels_, mode_, hbosranked, True, "sqrt")
+        auto_auc_smooth, auto_bins_smooth, _ ,_= calc_roc_auc2(data_, labels_, mode_, hbosranked, True, "sqrt")
         plt.figure(figsize=[10, 8])
         plt.plot(xval, aucs_static, color='blue', lw=1, label='mode: ' + mode_)
         plt.plot(xval, aucs_ranked, color='midnightblue', lw=1, label='mode: ' + mode_ + ' ranked')
@@ -914,7 +1090,7 @@ def calc_auc_graph_static_or_dynamic(data_, labels_, count, dataname):
         plt.plot(xvaldyn, aucs_static, color='red', lw=1, label='mode: ' + mode_)
         plt.plot(xvaldyn, aucs_ranked, color='darkred', lw=1, label='mode: ' + mode_ + ' ranked')
 
-    label_ = 'n_bins= sqrt(samples) {}'.format(auto_bins_static)
+    #label_ = 'n_bins= sqrt(samples) {}'.format(auto_bins_static)
     label2_ = 'n_bins= sqrt(samples) ranked ' + mode_
     label3_ = 'n_bins= sqrt(samples) smooth ' + mode_
 
@@ -1132,27 +1308,31 @@ def calc_auc_new_and_old(data_, label_, count, dataname):
 
 
 def plot_explainability(id_):
-    y_values = clf.get_explainability_scores(id_)
+    y_values, highest = clf.get_explainability_scores(id_)
 
+    print(highest)
     # Labels erstellen
-    labels = ['Feature: {}'.format(i + 1) for i in range(clf.n_features_)]
-
-    colors = cm.RdYlGn_r(y_values / (np.max(y_values)))  # Skalieren der Werte auf [0, 1]
+    labels = ['d {}'.format(i + 1) for i in range(clf.n_features_)]
+    colors=[]
+    for i in range (len(highest)):
+        colors.append(cm.RdYlGn_r(y_values[i] / highest[i]))
     plt.figure(figsize=[10, 8])
     plt.barh(np.arange(len(y_values)), y_values, color=colors, tick_label=labels)
 
     plt.xlabel('score')
 
     plt.title(
-        'explainability score for sample: {}'.format(id_) + ' with outlierscore = {0:0.4f}'.format(
+        'dimension-specific scores for sample: {}'.format(id_) + ' with outlier score = {0:0.4f}'.format(
             clf.decision_scores_[id_]))
     plt.legend(loc="lower right")
     plt.show()
 
 
-def calc_roc_auc2(data_, labels_, mode_, ranked_, smooth_, n_bins_):
-    clfauc = HBOSPYOD(ranked=ranked_, mode=mode_, smoothen=smooth_, n_bins=n_bins_)
-    #clfauc = HBOS(n_bins = n_bins_)
+def calc_roc_auc2(data_, labels_, mode_, ranked_, smooth_, n_bins_, test):
+    if test ==1:
+        clfauc = HBOSPYOD(ranked=ranked_, mode=mode_, adjust=smooth_, n_bins=n_bins_)
+    else:
+        clfauc = HBOSPYOD(ranked=ranked_, mode=mode_, adjust=smooth_, n_bins=n_bins_)
     clfauc.fit(data_)
 
     scores = clfauc.decision_scores_
@@ -1165,13 +1345,13 @@ def calc_roc_auc2(data_, labels_, mode_, ranked_, smooth_, n_bins_):
     auc = metrics.auc(fpr, tpr)
     # auc = roc_auc_score(hbos_orig_sorted['Class'], hbos_orig_sorted['scores'])
     patn = average_precision_score(labels_, scores)
-    n_bins_array_= clfauc.n_bins_array_
-    #n_bins_array_ = 10
+    #n_bins_array_ = clfauc.n_bins_array_
+    n_bins_array_ = 10
     return auc, clfauc.n_bins, n_bins_array_, patn
 
 
-def calc_roc_auc(orig_):
-    scores = clf.decision_scores_
+def calc_roc_auc(orig_, scores_):
+    scores = scores_
     hbos_orig = orig_
     hbos_orig['scores'] = scores
     hbos_orig_sorted = hbos_orig.sort_values(by=['scores'], ascending=False)
@@ -1181,7 +1361,7 @@ def calc_roc_auc(orig_):
     # auc = roc_auc_score(hbos_orig_sorted['Class'], hbos_orig_sorted['scores'])
 
     plt.figure(figsize=[8, 5])
-    plt.plot(fpr, tpr, color='r', lw=2, label='mode: ' + testhbosmode + ', ranked: {}'.format(testhbosranked))
+    plt.plot(fpr, tpr, color='r', lw=2, label='HBOS'.format(testhbosranked))
     plt.plot([0, 1], [0, 1], color='k', lw=2, linestyle='--', label='guessing')
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
@@ -1189,9 +1369,7 @@ def calc_roc_auc(orig_):
     plt.ylabel('True Positive Rate')
 
     print(auc, "auc")
-    plt.title('Receiver operating characteristic: HBOS_AUC ={0:0.4f}'.format(auc))
-    plt.text(0, -0.1, 'n_bins: {}'.format(clf.n_bins), fontsize=12, color='black', ha='left',
-             transform=plt.gca().transAxes)
+    plt.title('Receiver Operating Characteristic, AUC ={0:0.4f}'.format(auc))
     plt.legend(loc="lower right")
     plt.show()
     return auc
@@ -1313,6 +1491,15 @@ if __name__ == "__main__":
     dataset15label = mat_data15['y']
     orig15 = dataset15.copy()
     del dataset15['Class']
+
+    mat_data17 = loadmat(r"C:\Users\david\Desktop\datasets_hbos\ODDS\Dataset\ionosphere.mat")
+    dataset17 = pd.DataFrame(mat_data17['X'])
+    dataset17["Class"] = mat_data17['y']
+
+    dataset17.to_csv(r"csv.csv")
+    dataset17label = mat_data17['y']
+    orig17 = dataset17.copy()
+    del dataset17['Class']
 
     annthyroid = arff.loadarff(r'C:\Users\david\Desktop\datasets\semantic\Annthyroid\Annthyroid_02_v01.arff')
     annthyroid_df = pd.DataFrame(annthyroid[0])
@@ -1816,12 +2003,8 @@ if __name__ == "__main__":
         (elki10, elki10label, 100, "Waveform_withoutdupl_v01"),
         (elki11, elki11label, 100, "WBC_v01"),
         (elki12, elki12label, 100, "WDBC_withoutdupl_v01"),
-        (elki13, elki13label, 100, "WPBC_withoutdupl_norm")
+        (elki13, elki13label, 100, "WPBC_withoutdupl_norm"),
 
-    ]
-
-    #
-    V4 = [
         (elki_semantic1, elki_semantic1label, 350, "Annthyroid_02_v01"),
         (elki_semantic2, elki_semantic2label, 250, "Arrhythmia_withoutdupl_02_v01"),
         (elki_semantic3, elki_semantic3label, 500, "Cardiotocography_02_v01"),
@@ -1833,8 +2016,9 @@ if __name__ == "__main__":
         (elki_semantic9, elki_semantic9label, 100, "Pima_withoutdupl_02_v01"),
         (elki_semantic10, elki_semantic10label, 100, "SpamBase_02_v01"),
         (elki_semantic11, elki_semantic11label, 100, "Stamps_withoutdupl_02_v01")
-
     ]
+
+    #
 
     VAnnthyroid = [
         (annthyroid1, annthyroid1label, 100, "Annthyroid_02_v01"),
@@ -1849,7 +2033,7 @@ if __name__ == "__main__":
         (annthyroid10, annthyroid10label, 100, "Annthyroid_withoutdupl_norm_02_v01"),
         (annthyroid11, annthyroid11label, 100, "Annthyroid_withoutdupl_norm_05_v01"),
         (annthyroid12, annthyroid12label, 100, "Annthyroid_withoutdupl_norm_07"),
-
+        (harvard2, harvard2label, 300, "annthyroid-unsupervised-ad"),
     ]
 
     VTEST2 = [
@@ -1872,18 +2056,17 @@ if __name__ == "__main__":
     # (dataset11, dataset11label, 100, "optdigits"),
     #  (harvard5, harvard5label, 100, "letter-unsupervised-ad"),
     # (elki12, elki12label, 100, "WDBC_withoutdupl_v01"),
+    # (harvard3, harvard3label, 100, "breast-cancer-unsupervised-ad2"),
     VALL = [
         (dataset3, dataset3label, 600, "cover"),
         (dataset6, dataset6label, 800, "http"),
         (dataset7, dataset7label, 50, "lympho"),
         (dataset8, dataset8label, 800, "mammography"),
-
+        (elki_semantic1, elki_semantic1label, 350, "Annthyroid_02_v01"),
         (dataset10, dataset10label, 400, "musk"),
+        (dataset15, dataset15label, 100, "vowel"),
 
-        (harvard3, harvard3label, 100, "breast-cancer-unsupervised-ad2"),
         (harvard4, harvard4label, 100, "kdd99-unsupervised-ad"),
-        (harvard5, harvard5label, 100, "letter-unsupervised-ad"),
-        (harvard6, harvard6label, 250, "pen-global-unsupervised-ad"),
         (harvard8, harvard8label, 100, "satellite-unsupervised-ad"),
         (elki3, elki3label, 100, "Glass_withoutdupl_norm"),
         (elki8, elki8label, 100, "PenDigits_withoutdupl_norm_v01"),
@@ -1974,7 +2157,6 @@ if __name__ == "__main__":
         (dataset6, dataset6label, 80, "http"),
         (elki_semantic7, elki_semantic7label, 100, "PageBlocks_02_v01"),
         (harvard6, harvard6label, 250, "pen-global-unsupervised-ad"),
-
     ]
     VQ = [
         (dataset3, dataset3label, 600, "cover"),
@@ -2017,43 +2199,81 @@ if __name__ == "__main__":
     ]
 
     kd99 = [
-        (harvard2, harvard2label, 250, "Arrhythmia_withoutdupl_02_v01"),
+
+        (elki_semantic4, elki_semantic4label, 100, "test"),
     ]
+    if ( False):
+        processes = []
 
-    processes = []
+        start_time = time.time()
+        for data in VALL:
+            p = multiprocessing.Process(target=calc_auc_graph_static_or_dynamic, args=data)
+            processes.append(p)
+            p.start()
 
-    '''start_time = time.time()
-    for data in VALL:
-        p = multiprocessing.Process(target=calc_auc_graph_static_or_dynamic, args=data)
-        processes.append(p)
-        p.start()
+        for p in processes:
+            p.join()
+        end_time = time.time()
+        print("Time taken: ", end_time - start_time)
 
-    for p in processes:
-        p.join()
-    end_time = time.time()
-    print("Time taken: ", end_time - start_time)'''
-
-    calc_average_dynamic(kd99)
-
+    #calc_average_dynamic(VALL)
+#
     # 620098
     testhbosmode = "dynamic"
     testhbosranked = False
-    clf = HBOSPYOD(mode="dynamic", samples_per_bin=310050)
-    clf.fit(harvard4)
 
-    # calc_roc_auc(datasettestorig)
+
+    clf = HBOSPYOD(mode="dynamic",n_bins=101, save_explainability_scores=True, ranked=True)
+    #clf.fit(dataset13)
+    '''start_time = time.time()
+    clf.fit(dataset13)
+    end_time = time.time()
+    scores = clf.decision_scores_
+    print(calc_roc_auc(orig13, scores))
+    print("Time taken, static: ", end_time - start_time)
+
+
+    clf2 = HBOSPYOD(mode="static", save_explainability_scores=False)
+    #clf = HBOSOLD()
+    start_time = time.time()
+    clf2.fit(dataset13)
+    end_time = time.time()
+    print("Time taken, dynamic: ", end_time - start_time)
+
+    clf3 = HBOSOLD()
+    start_time = time.time()
+    #clf3.fit_predict(dataset13)
+    end_time = time.time()
+    print("Time taken, hbos old dynamic: ", end_time - start_time)
+
+
+
+    list= 'dynamic binwidth'* dataset13.shape[1]
+    clf = HBOSOLD()
+    start_time = time.time()
+    scores2= clf.fit_predict(dataset13)
+    end_time = time.time()
+    print(calc_roc_auc(orig13, scores2))
+    print("Time taken hbos old, static: ", end_time - start_time)'''
+
+
+
+
+    #calc_roc_auc(orig13)
 
     # print(clf.labels_)
     # print(calc_roc_auc2(datasettest,datasettestorig,"dynamic",False,False,4))
     # calc_roc_auc(orig_)
-
-    # plot_explainability(0)
+    clf = HBOSPYOD(mode="static",adjust=False, n_bins="fd_st", save_explainability_scores=True, ranked=False)
+    clf.fit(elki_semantic3)
+    plot_explainability(3)
 
     alldatasets = []
     alltitles = []
 
-    for sets in VALL:
+    for sets in kd99:
         alldatasets.append(sets[0])
         alltitles.append(sets[3])
 
-    # plot_distributions(alldatasets[11], alltitles[11])
+    #plot_distributions(alldatasets[0], alltitles[0])
+    #plot_boxplot(VALL)

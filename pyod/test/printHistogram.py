@@ -14,6 +14,15 @@ import numpy as np
 
 import numpy as np
 
+harvard2 = pd.read_csv(r'C:\Users\david\Desktop\datasets_hbos\Harvard Dataverse\annthyroid-unsupervised-ad.csv',
+                       header=None)
+lastcol = harvard2.columns[-1]
+harvard2.rename(columns={lastcol: 'Class'}, inplace=True)
+harvard2label = harvard2['Class']
+harvardorig2 = harvard2.copy()
+del harvard2['Class']
+
+
 # Die gegebene Liste
 data = [
     [297.09866881], [278.60942996], [254.38540753], [263.60204812], [297.91158503],
@@ -39,12 +48,15 @@ data = [
 ]
 
 uniform_data = np.random.uniform(250, 300, 97)
-uniform_data2 = np.random.uniform(0, 10, 99)
+uniform_data2 = np.random.uniform(1, 10, 10)
 
 # Adding an extreme point valued
 
-extreme_point = np.array([0, 1, 2])
-extreme_point2 = np.array([100])
+extreme_point = (0,1,2)
+extreme_point2 = ()
+
+points=np.array([2,2,2,3])
+
 
 # Combining the uniform data with the extreme point
 np_array = np.append(uniform_data2, extreme_point2)
@@ -53,26 +65,30 @@ np_array = np.append(uniform_data2, extreme_point2)
 np.set_printoptions(threshold=np.inf)
 clf = HBOSPYOD()
 
-clf.set_params(mode="dynamic", ranked=False, n_bins=10)
+clf.set_params(mode="static", ranked=False, n_bins=10)
 mixed_data = np_array.reshape(-1, 1)
+mixed_data = points.reshape(-1, 1)
 time1start = time.time()
-clf.fit(mixed_data)
+clf.fit(data)
 
-bin_edges = np.array(clf.bin_edges_array_[0])
-bin_breite = clf.bin_width_array_[0]
-heights = np.array(clf.hist_[0])
-scores = clf.score_array_[0]
+i=0
+bin_edges = np.array(clf.bin_edges_array_[i])
+bin_breite = clf.bin_width_array_[i]
+heights = np.array(clf.hist_[i])
+scores = clf.score_array_[i]
 print(heights)
 print(clf.decision_scores_)
+print(clf.bin_edges_array_)
+print(clf.bin_width_array_)
 # bin_positionen = np.cumsum([0] + bin_breite[:-1])
 density = heights / bin_breite
 
 
 plt.bar(bin_edges[:-1], density, width=np.diff(bin_edges), align='edge', edgecolor='black')
 
-plt.title('Histogram with static bin width ')
-plt.xlabel('Data')
-plt.ylabel('Density')
+plt.title('Histogram with fixed bin width ')
+plt.xlabel('x-value')
+plt.ylabel('density estimation')
 
 plt.show()
 

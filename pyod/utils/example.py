@@ -74,7 +74,7 @@ def visualize(clf_name, X_train, y_train, X_test, y_test, y_train_pred,
 
         """
         plt.axis("equal")
-        plt.scatter(X_inliers[:, 0], X_inliers[:, 1], label='inliers',
+        plt.scatter(X_inliers[:, 0], X_inliers[:, 1], label='normal instance',
                     color=inlier_color, s=40)
         plt.scatter(X_outliers[:, 0], X_outliers[:, 1],
                     label='outliers', color=outlier_color, s=50, marker='^')
@@ -102,16 +102,16 @@ def visualize(clf_name, X_train, y_train, X_test, y_test, y_train_pred,
 
     # plot ground truth vs. predicted results
     fig = plt.figure(figsize=(12, 10))
-    plt.suptitle("Demo of {clf_name} Detector".format(clf_name=clf_name),
+    plt.suptitle("HBOS used in a supervised and semi supersvised setup".format(clf_name=clf_name),
                  fontsize=15)
 
     fig.add_subplot(221)
-    _add_sub_plot(X_train_inliers, X_train_outliers, 'Train Set Ground Truth',
+    _add_sub_plot(X_train_inliers, X_train_outliers, 'Training Set Ground Truth',
                   inlier_color='blue', outlier_color='orange')
 
     fig.add_subplot(222)
     _add_sub_plot(X_train_inliers_pred, X_train_outliers_pred,
-                  'Train Set Prediction', inlier_color='blue',
+                  'Training Set Prediction', inlier_color='blue',
                   outlier_color='orange')
 
     fig.add_subplot(223)

@@ -74,6 +74,8 @@ if __name__ == "__main__":
     harvardorig2 = harvard2.copy()
     del harvard2['Class']
 
+
+
     '''c=20
     time2=0
     for i in range(c):
@@ -109,10 +111,10 @@ if __name__ == "__main__":
     plt.ylabel('Anomalies found')
     plt.show()'''
 
-    clf2.set_params(mode="dynamic")
+    clf2.set_params(mode="static",n_bins="fd_st", ranked=False)
     # clf2.set_save_scores(True)
     time1start=time.time()
-    clf2.fit(harvard2)
+    clf2.fit(data)
     time1end=time.time()
     print("time 2",time1end-time1start)
     #rere=clf2.get_explainability_scores(0)
@@ -121,9 +123,9 @@ if __name__ == "__main__":
     #ans = clf.predict(data)
     # print("TEST",ans[:20])
     hbos_scores2 = clf2.decision_scores_
-    hbos_orig2 = harvardorig2.copy()
+    hbos_orig2 = orig.copy()
     hbos_orig2['hbos'] = hbos_scores2
-    hbos_top1000_data2 = hbos_orig2.sort_values(by=['hbos'], ascending=False)[:10]
+    hbos_top1000_data2 = hbos_orig2.sort_values(by=['hbos'], ascending=False)
 
     print(hbos_top1000_data2)
     firstrow = hbos_orig["V1"]
@@ -132,6 +134,7 @@ if __name__ == "__main__":
 
     # test.to_csv("testforjava.txt")
     print(len(hbos_top1000_data2[lambda x: x['Class'] == 1]), " gefunden")
+    print(hbos_top1000_data2[lambda x: x['Class'] == 1])
     '''resultscores=clf2.all_scores_per_sample
 
     erste_werte = [subliste[0][0] for subliste in resultscores]

@@ -38,16 +38,16 @@ if __name__ == "__main__":
                       random_state=42)
 
     # train HBOS detector
-    clf_name = 'HBOSPYOD'
+    clf_name = 'HBOS'
     clf_name2= 'HBOS'
     clf = HBOSPYOD()
 
     #clf.set_ranked(True)
-    clf.set_params(n_bins=10,smoothen=False, mode="static",ranked=False,save_explainability_scores= False)
+    clf.set_params(n_bins=10,adjust=True, mode="static",ranked=False,save_explainability_scores= False)
     clf.fit(X_train)
     clf2= HBOS(n_bins="auto")
     clf2.fit(X_train)
-    print(clf.n_bins,"HBOSPYOD")
+    print(clf.n_bins,"HBOS")
     print(clf2.n_bins,"HBOS")
 
     # get the prediction labels and outlier scores of the training data
