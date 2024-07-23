@@ -512,7 +512,6 @@ class HBOS(BaseDetector):
         ranked_scores = []
         for i in range(self.n_features_):
             scores_i = self.score_array_[i]
-            # sort scores
             sorted_scores = sorted(scores_i)
             score_rank_dict = {}
             current_rank = 1
@@ -529,29 +528,6 @@ class HBOS(BaseDetector):
 
         self.score_array_ = ranked_scores
 
-    def rank_scores_no_empty_bins(self):
-        """The internal function for the ranked mode.
-        The bins in each histogram are sorted then ranked,
-        the smallest bin gets the smallest rank etc.
-        Bins are ranked ascending even if they have the same density score.
-        Empty bins are not included in the ranking process.
-        """
-        ranked_scores = []
-        for i in range(self.n_features_):
-            scores_i = self.score_array_[i]
-            unique = np.unique(scores_i)
-            sorted_indices = np.argsort(scores_i)
-            ranks = np.zeros(len(scores_i))
-            counter = 1
-            for j in range(len(scores_i)):
-                tmpid = sorted_indices[j]
-                if scores_i[tmpid] > 0:
-                    ranks[tmpid] = counter
-                    counter = counter + 1
-            max_score = np.max(ranks)
-            new_ranks_norm = ranks / max_score
-            # ranked_scores.append(ranks)
-        self.score_array_ = ranked_scores
 
     def calc_hbos_scores(self, samples, features, bin_id_array):
         """The internal function to calculate the outlier scores based on
@@ -577,7 +553,6 @@ class HBOS(BaseDetector):
         hbos_scores = np.zeros(samples)
         if self.ranked:
             self.rank_scores()
-            # self.rank_scores_no_empty_bins()
         for a in range(features):
             self.highest_score_id_.append(np.argmax(self.score_array_[a]) + 1)
 
@@ -705,8 +680,9 @@ class HBOS(BaseDetector):
 
             Returns
             -------
-            explainability scores : array of shape (n_features) or array of shape (n_samples, n_features)
+            explainability_scores : array of shape (n_features) or array of shape (n_samples, n_features)
                 The explainability scores.
+            max_scores: array of shape (n_features) containing the maximum score of every histogram.
             """
         check_is_fitted(self, ['hist_', 'bin_edges_array_'])
         max_scores = []
